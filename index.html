@@ -1,1442 +1,165 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
-<title>Lumen · 智能家居</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%235ea2fa' d='M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z'/%3E%3C/svg%3E">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<title>Atmos — Home Assistant Spatial UI</title>
 <style>
-/* ============ 设计系统 ============ */
 :root{
-  --bg:#0b1220; --surface:#141d31; --surface2:#1a2540; --brd:rgba(255,255,255,.07);
-  --text:#e8edf7; --text2:#9aa8bd; --muted:#64748b;
-  --accent:#5ea2fa; --accent2:#818cf8; --on-accent:#0b1220;
-  --glow1:#3b82f6; --glow2:#8b5cf6; --glow-op:.16;
-  --radius:24px; --shadow:0 14px 34px rgba(0,0,0,.45);
-  --neo-d:transparent; --neo-l:transparent;
+  --bg:#0b0b0d;--panel:rgba(255,255,255,.055);--panel2:rgba(255,255,255,.09);
+  --text:#f5f5f7;--muted:#92939b;--line:rgba(255,255,255,.09);
+  --accent:#d8ff63;--accent2:#8ea8ff;--glow:rgba(216,255,99,.22);
+  --radius:28px;--blur:28px;--speed:.28s;--noise:.035;
+  --font:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI Variable Display","Segoe UI","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei UI",sans-serif;
-  background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;
-  min-height:100vh;overflow-x:hidden;
-  -webkit-font-smoothing:antialiased;transition:background-color .4s,color .4s;
-}
-body::before{
-  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:
-    radial-gradient(640px 440px at 86% -8%,color-mix(in srgb,var(--glow1) 62%,transparent),transparent 70%),
-    radial-gradient(760px 540px at -12% 108%,color-mix(in srgb,var(--glow2) 58%,transparent),transparent 70%);
-  opacity:var(--glow-op);
-}
-button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
-input{font:inherit}
-svg{display:block;flex:none}
-:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
-::-webkit-scrollbar{width:10px;height:8px}
-::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 16%,transparent);border-radius:99px;border:3px solid transparent;background-clip:content-box}
-::-webkit-scrollbar-track{background:transparent}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
-
-/* ============ 布局骨架 ============ */
-.app{display:flex;min-height:100vh}
-.sidebar{
-  width:254px;flex:none;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
-  padding:22px 16px 18px;border-right:1px solid var(--brd);
-  background:color-mix(in srgb,var(--surface) 40%,transparent);backdrop-filter:blur(16px);
-}
-.side-logo{display:flex;align-items:center;gap:12px;padding:4px 8px 22px}
-.logo-tile{
-  width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#fff;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 40%,transparent);
-}
-.logo-name{font-size:18px;font-weight:800;letter-spacing:-.02em}
-.logo-sub{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.08em}
-.side-nav{display:flex;flex-direction:column;gap:4px;margin-top:6px}
-.nav-item{
-  display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;
-  color:var(--text2);font-weight:600;font-size:14.5px;transition:.2s;width:100%;text-align:left;
-}
-.nav-item:hover{color:var(--text);background:color-mix(in srgb,var(--text) 6%,transparent)}
-.nav-item.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
-.side-status{margin-top:auto;font-size:12.5px}
-.ss-card{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:14px;background:var(--surface2);border:1px solid var(--brd);color:var(--text2);font-weight:600}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
-.dot.on{background:#34d399;box-shadow:0 0 8px #34d39988}
-.dot.off{background:#f87171;box-shadow:0 0 8px #f8717188}
-.dot.wait{background:#fbbf24;box-shadow:0 0 8px #fbbf2488;animation:pulse 1.2s infinite}
-.dot.demo{background:#38bdf8;box-shadow:0 0 8px #38bdf888}
-@keyframes pulse{50%{opacity:.35}}
-
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{
-  position:sticky;top:0;z-index:30;
-  background:color-mix(in srgb,var(--bg) 76%,transparent);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--brd);
-}
-.topbar-in{max-width:1240px;margin:0 auto;padding:18px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.tb-head{margin-right:auto}
-.tb-head h1{font-size:23px;font-weight:800;letter-spacing:-.02em}
-.tb-head p{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px}
-.tb-search{
-  display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--brd);
-  border-radius:99px;padding:9px 16px;min-width:220px;color:var(--muted);transition:.2s;
-}
-.tb-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3.5px color-mix(in srgb,var(--accent) 16%,transparent)}
-.tb-search input{background:none;border:none;outline:none;color:var(--text);width:100%;font-size:13.5px}
-.tb-search input::placeholder{color:var(--muted)}
-.tb-actions{display:flex;align-items:center;gap:10px}
-.icon-btn{
-  width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:var(--text2);
-  background:var(--surface2);border:1px solid var(--brd);transition:.2s;
-}
-.icon-btn:hover{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--brd));transform:translateY(-1px)}
-.view{max-width:1240px;width:100%;margin:0 auto;padding:24px 28px 56px;flex:1}
-.view section{margin-bottom:28px;animation:rise .45s cubic-bezier(.22,1,.36,1) both}
-@keyframes rise{from{opacity:0;transform:translateY(12px)}}
-
-/* ============ Hero ============ */
-.hero{
-  position:relative;overflow:hidden;border-radius:28px;padding:28px 30px;color:var(--on-accent);
-  background:linear-gradient(130deg,var(--accent),var(--accent2));box-shadow:var(--shadow);
-}
-.hero::after{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:rgba(255,255,255,.16);top:-170px;right:-70px;filter:blur(6px)}
-.hero::before{content:'';position:absolute;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.1);bottom:-160px;left:-60px;filter:blur(6px)}
-.hero-row{display:flex;justify-content:space-between;align-items:center;gap:16px;position:relative}
-.hero-k{font-size:13px;font-weight:700;opacity:.85;letter-spacing:.02em}
-.hero-temp{font-size:64px;font-weight:200;letter-spacing:-.04em;line-height:1.05;margin:6px 0 4px}
-.hero-temp span{font-size:26px;font-weight:400;vertical-align:22px;opacity:.8}
-.hero-meta{font-size:13.5px;font-weight:600;opacity:.85}
-.hero-ic{color:var(--on-accent);opacity:.92}
-.hero-chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;position:relative}
-.hchip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);border-radius:13px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;color:inherit}
-.hchip:hover{background:rgba(255,255,255,.34);transform:translateY(-1px)}
-.hchip b{font-weight:800}
-.hchip svg{opacity:.9}
-
-/* ============ 区块 / 卡片 ============ */
-.sec-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.sec-head h2{font-size:16.5px;font-weight:800;letter-spacing:-.01em}
-.sec-head .cnt{font-size:12px;color:var(--muted);font-weight:700;background:var(--surface2);padding:3px 10px;border-radius:99px;border:1px solid var(--brd)}
-.sec-more{margin-left:auto;font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;background:none;display:inline-flex;align-items:center;gap:4px}
-.sec-more:hover{text-decoration:underline}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
-.grid.rooms{grid-template-columns:repeat(auto-fill,minmax(206px,1fr))}
-
-.card{
-  position:relative;background:var(--surface);border:1px solid var(--brd);border-radius:var(--radius);
-  padding:16px 16px 15px;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s,border-color .25s,opacity .3s;
-}
-.card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:color-mix(in srgb,var(--tg,var(--accent)) 28%,var(--brd))}
-.card.na{opacity:.55}
-.card-top{display:flex;align-items:flex-start;gap:12px}
-.tile{
-  width:46px;height:46px;border-radius:15px;display:grid;place-items:center;flex:none;
-  background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--muted);transition:.3s;
-}
-.tile.on{background:color-mix(in srgb,var(--tg,var(--accent)) 17%,transparent);color:var(--tg,var(--accent))}
-
-/* ============ 状态特效层 ============ */
-.fx{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;z-index:0}
-.card>.card-top,.card>.ctl,.card>.c-more{position:relative;z-index:1}
-/* 灯光：微光晕浮现 */
-.fx-light{background:radial-gradient(ellipse 90% 55% at 18% 0%,color-mix(in srgb,var(--tg,#ffdca8) 22%,transparent),transparent 70%);animation:fxIn .8s ease}
-@keyframes fxIn{from{opacity:0;transform:scale(.94)}}
-/* 空调-制冷：雪花飘落 */
-.fx-snow i{position:absolute;top:-8px;width:5px;height:5px;border-radius:50%;background:color-mix(in srgb,#a5d8ff 80%,#fff);box-shadow:0 0 8px #a5d8ff;animation:snowFall linear infinite}
-.fx-snow i:nth-child(1){left:14%;animation-duration:3.4s}
-.fx-snow i:nth-child(2){left:32%;animation-duration:4.6s;animation-delay:.9s;width:4px;height:4px}
-.fx-snow i:nth-child(3){left:55%;animation-duration:3.9s;animation-delay:1.8s}
-.fx-snow i:nth-child(4){left:71%;animation-duration:5.1s;animation-delay:.4s;width:3.5px;height:3.5px}
-.fx-snow i:nth-child(5){left:86%;animation-duration:4.2s;animation-delay:2.4s}
-@keyframes snowFall{0%{transform:translateY(-8px);opacity:0}12%{opacity:1}85%{opacity:.9}100%{transform:translateY(150px) translateX(10px);opacity:0}}
-/* 空调-制热：热气上升 */
-.fx-heat i{position:absolute;bottom:-6px;width:8px;height:8px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:color-mix(in srgb,#fb923c 60%,transparent);filter:blur(2px);animation:heatRise ease-in infinite}
-.fx-heat i:nth-child(1){left:20%;animation-duration:2.6s}
-.fx-heat i:nth-child(2){left:44%;animation-duration:3.3s;animation-delay:.8s}
-.fx-heat i:nth-child(3){left:66%;animation-duration:2.9s;animation-delay:1.5s}
-.fx-heat i:nth-child(4){left:84%;animation-duration:3.7s;animation-delay:.4s}
-@keyframes heatRise{0%{transform:translateY(6px) rotate(-45deg) scale(.5);opacity:0}20%{opacity:.85}100%{transform:translateY(-120px) rotate(-45deg) scale(1.15);opacity:0}}
-/* 风扇：旋转 + 气流线 */
-.fx-fan .fan-spin{position:absolute;left:14px;top:14px;width:30px;height:30px;color:var(--tg,#7dd3fc);animation:fanSpin 1.1s linear infinite;opacity:.9}
-@keyframes fanSpin{to{transform:rotate(360deg)}}
-.fx-fan i{position:absolute;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,color-mix(in srgb,#7dd3fc 70%,transparent));animation:windBlow linear infinite}
-.fx-fan i:nth-child(2){top:32%;left:8%;width:52px;animation-duration:1.8s}
-.fx-fan i:nth-child(3){top:52%;left:4%;width:68px;animation-duration:2.3s;animation-delay:.5s}
-.fx-fan i:nth-child(4){top:72%;left:12%;width:44px;animation-duration:2s;animation-delay:1s}
-@keyframes windBlow{0%{transform:translateX(-20px);opacity:0}25%{opacity:.9}100%{transform:translateX(220px);opacity:0}}
-/* 窗帘：开合帘布 */
-.fx-curtain{position:absolute;top:0;bottom:0;width:12px;border-radius:3px;
-  background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--tg,#c9a876) 55%,transparent) 0 2.5px,color-mix(in srgb,var(--tg,#c9a876) 25%,transparent) 2.5px 4.5px);
-  transition:left .8s cubic-bezier(.4,0,.2,1),opacity .5s;box-shadow:0 0 10px color-mix(in srgb,var(--tg,#c9a876) 30%,transparent)}
-@media (prefers-reduced-motion:reduce){.fx{display:none!important}}
-.c-info{flex:1;min-width:0}
-.c-name{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.c-state{font-size:12.5px;color:var(--text2);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.c-state.on{color:var(--tg,var(--accent))}
-.fav{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;color:var(--muted);flex:none;opacity:0;transition:.2s}
-.card:hover .fav,.fav.act{opacity:1}
-.fav:hover{color:#fbbf24;background:color-mix(in srgb,#fbbf24 12%,transparent)}
-.fav.act{color:#fbbf24}
-.fav.act svg{fill:#fbbf24}
-.c-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;min-height:36px}
-.c-foot.btns{justify-content:flex-end;gap:8px}
-.c-foot .temp{font-size:26px;font-weight:800;letter-spacing:-.03em}
-.ib{
-  width:36px;height:36px;flex:none;display:grid;place-items:center;border-radius:12px;
-  background:var(--surface2);color:var(--text2);border:1px solid var(--brd);transition:.2s;
-}
-.ib:hover{color:var(--tg,var(--accent));border-color:color-mix(in srgb,var(--tg,var(--accent)) 45%,var(--brd))}
-.ib.accent{background:var(--tg,var(--accent));color:var(--on-accent);border-color:transparent}
-.ib.accent:hover{filter:brightness(1.08);color:var(--on-accent)}
-.c-val{display:flex;align-items:baseline;gap:5px;margin-top:10px}
-.c-val b{font-size:25px;font-weight:800;letter-spacing:-.02em}
-.c-val span{font-size:13px;color:var(--text2);font-weight:600}
-.badge{display:inline-block;padding:6px 11px;border-radius:10px;font-size:12.5px;font-weight:700;margin-top:10px;background:color-mix(in srgb,var(--tg,var(--accent)) 15%,transparent);color:var(--tg,var(--accent))}
-
-/* 开关（iOS 风格） */
-.tgl{position:relative;width:47px;height:28px;flex:none;border-radius:99px;padding:0;
-  background:color-mix(in srgb,var(--text) 15%,transparent);transition:background .25s}
-.tgl::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;
-  box-shadow:0 2px 6px rgba(0,0,0,.3);transition:transform .28s cubic-bezier(.34,1.56,.64,1)}
-.tgl[aria-checked="true"]{background:var(--tg,var(--accent))}
-.tgl[aria-checked="true"]::after{transform:translateX(19px)}
-
-/* 滑块 */
-.ctl{display:flex;flex-direction:column;gap:7px}
-.ctl-head{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;color:var(--text2)}
-.ctl-head b{color:var(--text);font-weight:700}
-.rng{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;outline:none;cursor:pointer;
-  background:linear-gradient(90deg,var(--tg,var(--accent)) var(--fill,50%),color-mix(in srgb,var(--text) 13%,transparent) var(--fill,50%))}
-.rng::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35);transition:transform .15s}
-.rng:active::-webkit-slider-thumb{transform:scale(1.18)}
-.rng::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
-.c-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.22,1,.36,1)}
-.c-more>div{overflow:hidden;min-height:0}
-.c-more-in{padding-top:13px;display:flex;flex-direction:column;gap:13px}
-.card.open .c-more{grid-template-rows:1fr}
-.swrow{display:flex;gap:9px;flex-wrap:wrap}
-.sw-dot{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid rgba(128,128,128,.35);transition:transform .18s}
-.sw-dot:hover{transform:scale(1.16)}
-.sw-dot.sel{outline:2.5px solid var(--tg,var(--accent));outline-offset:2px}
-.chiprow{display:flex;gap:8px;flex-wrap:wrap}
-.chip{padding:7px 14px;border-radius:99px;font-size:13px;font-weight:600;background:var(--surface2);
-  border:1px solid var(--brd);color:var(--text2);transition:.2s;white-space:nowrap}
-.chip:hover{color:var(--text)}
-.chip.active{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
-
-/* ============ 房间 / 场景 ============ */
-.room{background:var(--surface);border:1px solid var(--brd);border-radius:var(--radius);padding:18px;cursor:pointer;
-  transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s,border-color .25s}
-.room:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:color-mix(in srgb,var(--accent) 30%,var(--brd))}
-.room-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
-.room-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
-.room-t{font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--accent)}
-.room-t small{font-size:12px;font-weight:600;opacity:.75}
-.room-name{font-size:15px;font-weight:700}
-.room-sub{font-size:12.5px;color:var(--text2);font-weight:600;margin-top:2px}
-.scrow{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
-.scrow::-webkit-scrollbar{display:none}
-.scard{min-width:112px;background:var(--surface);border:1px solid var(--brd);border-radius:20px;padding:14px;cursor:pointer;
-  transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;text-align:left}
-.scard:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
-.scard .stile{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#fff;margin-bottom:10px;
-  background:linear-gradient(135deg,var(--accent),var(--accent2))}
-.scard .sname{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.scard .ssub{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px}
-
-/* ============ 设置 ============ */
-.panel{background:var(--surface);border:1px solid var(--brd);border-radius:var(--radius);padding:22px}
-.panel + .panel{margin-top:16px}
-.frow{display:flex;flex-direction:column;gap:8px;margin-top:14px}
-.frow label{font-size:13px;font-weight:700;color:var(--text2)}
-.input{width:100%;background:var(--surface2);border:1px solid var(--brd);border-radius:14px;padding:12px 15px;
-  color:var(--text);font-size:14px;outline:none;transition:.2s}
-.input:focus{border-color:var(--accent);box-shadow:0 0 0 3.5px color-mix(in srgb,var(--accent) 17%,transparent)}
-.input::placeholder{color:var(--muted)}
-.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-.btn{display:inline-flex;align-items:center;gap:8px;border-radius:14px;padding:11px 21px;font-size:14px;font-weight:700;
-  color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--accent2));transition:.2s}
-.btn:hover{transform:translateY(-1.5px);box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 38%,transparent)}
-.btn:active{transform:translateY(0) scale(.98)}
-.btn.ghost{background:var(--surface2);color:var(--text);border:1px solid var(--brd)}
-.btn.ghost:hover{box-shadow:none;border-color:color-mix(in srgb,var(--accent) 40%,var(--brd))}
-.btn.sm{padding:8px 15px;border-radius:12px;font-size:13px}
-.help{margin-top:16px;font-size:13px;color:var(--text2)}
-.help summary{cursor:pointer;font-weight:700;color:var(--accent);font-size:13px}
-.help ol{padding-left:20px;margin-top:10px;display:flex;flex-direction:column;gap:5px}
-.about p{font-size:13px;color:var(--text2);margin-top:8px;line-height:1.7}
-.about b{color:var(--text)}
-.banner{display:flex;align-items:center;gap:14px;border-radius:var(--radius);padding:16px 20px;margin-bottom:22px;
-  background:color-mix(in srgb,var(--accent) 10%,var(--surface));
-  border:1px solid color-mix(in srgb,var(--accent) 30%,var(--brd));animation:rise .45s both}
-.banner .b-ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;
-  background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
-.banner p{flex:1;font-size:13.5px;font-weight:600;color:var(--text2)}
-.banner p b{color:var(--text);display:block;font-size:14.5px}
-.empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 0;color:var(--muted);font-weight:600}
-.list-tail{height:8px}
-
-/* ============ 主题抽屉 ============ */
-.sheet{position:fixed;inset:0;z-index:60;display:none}
-.sheet.show{display:block}
-.sheet-mask{position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(5px);opacity:0;transition:.3s}
-.sheet.show .sheet-mask{opacity:1}
-.sheet-panel{position:absolute;left:50%;bottom:0;transform:translate(-50%,40px);width:min(780px,96vw);max-height:84vh;
-  overflow-y:auto;background:var(--surface);border:1px solid var(--brd);border-radius:28px 28px 0 0;
-  padding:22px 24px 34px;opacity:0;transition:.4s cubic-bezier(.22,1,.36,1);box-shadow:var(--shadow)}
-.sheet.show .sheet-panel{opacity:1;transform:translate(-50%,0)}
-.sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.sheet-head h3{font-size:18px;font-weight:800;letter-spacing:-.01em}
-.sheet-head .cnt{font-size:12px;color:var(--accent);font-weight:700;background:color-mix(in srgb,var(--accent) 13%,transparent);padding:3px 10px;border-radius:99px}
-.sheet-head .icon-btn{margin-left:auto;width:36px;height:36px}
-.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(106px,1fr));gap:13px;margin-top:16px}
-.sw{display:flex;flex-direction:column;gap:7px;align-items:center;padding:0}
-.sw-prev{width:100%;aspect-ratio:16/10.5;border-radius:15px;background:var(--sw-bg);position:relative;overflow:hidden;
-  border:1px solid rgba(128,128,128,.22);transition:transform .2s}
-.sw-prev::before{content:'';position:absolute;inset:0;background:radial-gradient(60px 44px at 82% -10%,color-mix(in srgb,var(--sw-g1) 55%,transparent),transparent 72%)}
-.sw-card{position:absolute;left:11%;right:36%;top:24%;bottom:20%;border-radius:8px;background:var(--sw-sf);
-  box-shadow:inset 0 0 0 1px rgba(128,128,128,.18)}
-.sw-dotm{position:absolute;right:13%;top:26%;width:24%;aspect-ratio:1;border-radius:50%;background:var(--sw-ac)}
-.sw:hover .sw-prev{transform:scale(1.045)}
-.sw.active .sw-prev{outline:2.5px solid var(--accent);outline-offset:2.5px}
-.sw-name{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.sw.active .sw-name{color:var(--accent);font-weight:800}
-.tcats{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-
-/* ============ 底部导航（移动） ============ */
-.bottomnav{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;display:none;
-  background:color-mix(in srgb,var(--surface) 82%,transparent);backdrop-filter:blur(20px);
-  border:1px solid var(--brd);border-radius:24px;padding:7px;gap:2px;box-shadow:var(--shadow);
-  width:min(94vw,400px);justify-content:space-between}
-.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 7px;border-radius:17px;
-  color:var(--muted);font-size:10.5px;font-weight:700;transition:.2s}
-.bn-item.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
-
-/* ============ Toast ============ */
-.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,16px);z-index:90;opacity:0;pointer-events:none;
-  background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);
-  border:1px solid var(--brd);color:var(--text);padding:11px 19px;border-radius:15px;
-  box-shadow:var(--shadow);font-size:13.5px;font-weight:600;transition:.3s;max-width:90vw;text-align:center}
-.toast.show{opacity:1;transform:translate(-50%,0)}
-.toast.err{border-color:rgba(248,113,113,.45)}
-
-/* ============ 皮肤变体 ============ */
-.theme-glass .card,.theme-glass .room,.theme-glass .scard,.theme-glass .panel,
-.theme-glass .topbar,.theme-glass .sidebar,.theme-glass .bottomnav,.theme-glass .sheet-panel,.theme-glass .banner{backdrop-filter:blur(22px)}
-.theme-glass .tile,.theme-glass .ib,.theme-glass .chip,.theme-glass .room-ic,.theme-glass .icon-btn{backdrop-filter:blur(8px)}
-.theme-neo .card,.theme-neo .room,.theme-neo .scard,.theme-neo .panel{border-color:transparent;
-  box-shadow:7px 7px 14px var(--neo-d),-7px -7px 14px var(--neo-l)}
-.theme-neo .card:hover,.theme-neo .room:hover,.theme-neo .scard:hover{transform:translateY(-2px);
-  box-shadow:9px 9px 18px var(--neo-d),-9px -9px 18px var(--neo-l)}
-.theme-neo .tile,.theme-neo .ib,.theme-neo .chip,.theme-neo .icon-btn,.theme-neo .room-ic,.theme-neo .input,.theme-neo .tb-search,.theme-neo .ss-card{
-  background:var(--surface);border-color:transparent;box-shadow:inset 2.5px 2.5px 6px var(--neo-d),inset -2.5px -2.5px 6px var(--neo-l)}
-.theme-neo .tgl[aria-checked="false"]{background:var(--surface);box-shadow:inset 2.5px 2.5px 6px var(--neo-d),inset -2.5px -2.5px 6px var(--neo-l)}
-.theme-neo .rng{background:linear-gradient(90deg,var(--tg,var(--accent)) var(--fill,50%),var(--surface) var(--fill,50%));box-shadow:inset 1px 1px 3px var(--neo-d),inset -1px -1px 3px var(--neo-l)}
-
-/* ============ 卡片尺寸（密度） ============ */
-body[data-density="compact"] .grid{grid-template-columns:repeat(auto-fill,minmax(162px,1fr));gap:10px}
-body[data-density="compact"] .card{padding:12px 14px;border-radius:16px}
-body[data-density="compact"] .tile{width:36px;height:36px;border-radius:12px}
-body[data-density="compact"] .c-name{font-size:13.5px}
-body[data-density="large"] .grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
-body[data-density="large"] .card{padding:22px 24px;border-radius:24px}
-body[data-density="large"] .tile{width:56px;height:56px;border-radius:18px}
-body[data-density="large"] .c-name{font-size:16px}
-body[data-density="large"] .c-state{font-size:13.5px}
-
-/* ============ 触屏优化 ============ */
-html{-webkit-tap-highlight-color:transparent}
-button,.chip,.card,.rng{touch-action:manipulation}
-@supports(padding:env(safe-area-inset-bottom)){
-  .bottomnav{padding-bottom:calc(6px + env(safe-area-inset-bottom))}
-  @media (max-width:920px){.main{padding-bottom:calc(104px + env(safe-area-inset-bottom))}}
-}
-@media (hover:none){
-  .rng{height:36px}
-  .rng::-webkit-slider-thumb{width:26px;height:26px}
-  .rng::-moz-range-thumb{width:26px;height:26px}
-  .chip{min-height:38px;display:inline-flex;align-items:center}
-  .tgl{width:54px;height:32px}
-  .bn-item{padding:8px 4px}
-  .card:active{transform:scale(.985)}
-}
-
-/* ============ Bento 竖条磁贴 ============ */
-.bento{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px}
-.bt{position:relative;background:var(--surface);border:1px solid var(--brd);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .18s,border-color .25s,background .25s;min-height:150px;padding:12px 8px 10px;touch-action:manipulation}
-.bt:active{transform:scale(.97)}
-.bt .bt-ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--surface2);color:var(--muted);transition:all .25s;flex:none}
-.bt .bt-name{font-size:12px;font-weight:650;color:var(--text2);margin-top:8px;text-align:center;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.bt .bt-st{font-size:10.5px;color:var(--muted);margin-top:2px;text-align:center}
-.bt .fx{inset:0}
-/* 开启态 */
-.bt.on{border-color:color-mix(in srgb,var(--tg,var(--accent)) 40%,transparent);background:color-mix(in srgb,var(--tg,var(--accent)) 8%,var(--surface))}
-.bt.on .bt-ic{background:color-mix(in srgb,var(--tg,var(--accent)) 18%,transparent);color:var(--tg,var(--accent))}
-.bt.on .bt-name{color:var(--text)}
-/* 竖向滑条（灯/风扇/窗帘） */
-.bt .vsl{position:relative;width:100%;flex:1;min-height:52px;margin-top:8px;border-radius:12px;background:var(--surface2);overflow:hidden;touch-action:none;cursor:ns-resize}
-.bt .vsl-fill{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(to top,color-mix(in srgb,var(--tg,var(--accent)) 65%,transparent),color-mix(in srgb,var(--tg,var(--accent)) 18%,transparent));transition:height .12s ease;pointer-events:none}
-.bt .vsl-lab{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--text2);pointer-events:none}
-/* 空调磁贴 */
-.bt-cl .bt-temp{font-size:24px;font-weight:800;color:var(--text);margin-top:6px;line-height:1}
-.bt-cl .bt-step{display:flex;gap:8px;margin-top:8px}
-.bt-cl .bt-step button{width:30px;height:30px;border-radius:10px;border:1px solid var(--brd);background:var(--surface2);color:var(--text);font-size:16px;cursor:pointer;display:grid;place-items:center}
-/* Bento 密度联动 */
-body[data-density="compact"] .bento{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
-body[data-density="compact"] .bt{min-height:126px;border-radius:18px}
-body[data-density="compact"] .bt .bt-ic{width:32px;height:32px}
-body[data-density="large"] .bento{grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:16px}
-body[data-density="large"] .bt{min-height:178px;border-radius:26px}
-body[data-density="large"] .bt .bt-ic{width:46px;height:46px}
-
-/* ============ 响应式 ============ */
-@media (max-width:920px){
-  .sidebar{display:none}
-  .bottomnav{display:flex}
-  .main{padding-bottom:104px}
-  .view{padding:18px 16px 48px}
-  .topbar-in{padding:14px 16px}
-  .tb-head h1{font-size:20px}
-  .tb-search{min-width:0;flex:1;order:3}
-  .tb-head{order:1;margin-right:0}
-  .tb-actions{order:2}
-  .hero{padding:22px;border-radius:24px}
-  .hero-temp{font-size:52px}
-  .grid{grid-template-columns:repeat(auto-fill,minmax(158px,1fr))}
-  .c-foot .temp{font-size:22px}
-}
-@media (max-width:380px){
-  .grid{grid-template-columns:1fr 1fr}
-  .tile{width:40px;height:40px}
-}
+*{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+body{overflow:hidden;background:
+ radial-gradient(circle at 78% 12%,var(--glow),transparent 27%),
+ radial-gradient(circle at 20% 90%,rgba(142,168,255,.09),transparent 30%),var(--bg)}
+button,input{font:inherit;color:inherit}.app{height:100%;display:grid;grid-template-columns:230px 1fr}
+aside{padding:34px 18px;border-right:1px solid var(--line);backdrop-filter:blur(var(--blur));display:flex;flex-direction:column}
+.brand{padding:4px 14px 32px}.brand small{color:var(--muted);letter-spacing:.16em;font-size:10px}.brand h1{margin:7px 0 0;font-size:25px;letter-spacing:-.05em}
+.nav{display:flex;flex-direction:column;gap:4px}.room{border:0;background:transparent;text-align:left;padding:13px 14px;border-radius:17px;cursor:pointer;color:var(--muted);transition:all var(--speed)}
+.room:hover{background:var(--panel);color:var(--text)}.room.active{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.footer{margin-top:auto;padding:14px;color:var(--muted);font-size:11px}.status{display:flex;align-items:center;gap:7px}.dot{width:7px;height:7px;border-radius:50%;background:#777}.dot.on{background:var(--accent);box-shadow:0 0 14px var(--accent)}
+main{position:relative;overflow:auto;padding:34px 42px 60px}.top{display:flex;justify-content:space-between;align-items:flex-start}.eyebrow{color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase}.title{font-size:clamp(42px,6vw,78px);line-height:.95;letter-spacing:-.07em;margin:8px 0 0}.rightTop{display:flex;gap:10px;align-items:center}
+.iconbtn,.themebtn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:11px 14px;cursor:pointer;backdrop-filter:blur(18px)}
+.hero{margin-top:42px;min-height:220px;border:1px solid var(--line);border-radius:40px;padding:28px;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.025));backdrop-filter:blur(var(--blur))}
+.hero:before{content:"";position:absolute;width:340px;height:340px;border-radius:50%;right:-100px;top:-170px;background:radial-gradient(circle,var(--glow),transparent 68%);filter:blur(4px)}
+.hero h2{font-size:14px;color:var(--muted);font-weight:500;margin:0 0 8px}.hero .big{font-size:clamp(40px,7vw,74px);letter-spacing:-.07em;font-weight:650}.hero .sub{color:var(--muted);margin-top:8px}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.device{min-height:150px;border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);padding:19px;cursor:pointer;position:relative;overflow:hidden;transition:transform var(--speed),background var(--speed),border var(--speed);user-select:none}
+.device:hover{transform:translateY(-2px);background:var(--panel2)}.device.on{border-color:color-mix(in srgb,var(--accent) 35%,transparent);background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 9%,transparent),var(--panel))}
+.device .tag{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.device h3{margin:22px 0 4px;font-size:17px;letter-spacing:-.03em}.value{color:var(--muted);font-size:12px}
+.ring{position:absolute;right:16px;top:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:10px}
+.device.on .ring{border-color:var(--accent);box-shadow:0 0 24px var(--glow);color:var(--accent)}
+.section{margin-top:42px;display:flex;justify-content:space-between;align-items:end}.section h3{margin:0;font-size:22px;letter-spacing:-.04em}.section p{margin:5px 0 0;color:var(--muted);font-size:12px}
+.sceneRow{display:flex;gap:10px;overflow:auto;padding:16px 0 4px}.scene{min-width:150px;padding:18px;border:1px solid var(--line);border-radius:22px;background:var(--panel);cursor:pointer}.scene strong{display:block;margin-bottom:6px}.scene span{font-size:11px;color:var(--muted)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;align-items:flex-end;justify-content:center;z-index:20;backdrop-filter:blur(8px)}.sheet.show{display:flex}.sheetbox{width:min(720px,calc(100% - 24px));margin-bottom:12px;border:1px solid var(--line);background:rgba(25,25,28,.92);backdrop-filter:blur(35px);border-radius:34px;padding:22px;box-shadow:0 30px 100px rgba(0,0,0,.45);animation:up .25s ease}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}.sheethead{display:flex;justify-content:space-between;align-items:center}.sheethead h2{margin:0;font-size:25px;letter-spacing:-.04em}.close{border:0;background:var(--panel);border-radius:50%;width:36px;height:36px;cursor:pointer}.children{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.child{padding:18px;border:1px solid var(--line);border-radius:22px;background:var(--panel);cursor:pointer}.child strong{display:block}.child small{color:var(--muted);display:block;margin-top:8px}.slider{margin-top:20px}.slider input{width:100%;accent-color:var(--accent)}
+.themes{position:fixed;inset:0;display:none;z-index:30;background:rgba(0,0,0,.55);backdrop-filter:blur(12px);padding:40px;overflow:auto}.themes.show{display:block}.themePanel{max-width:1000px;margin:auto;background:rgba(22,22,25,.94);border:1px solid var(--line);border-radius:32px;padding:25px}.themeGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:18px}.theme{border:1px solid var(--line);border-radius:18px;padding:15px;min-height:92px;text-align:left;cursor:pointer;background:var(--panel)}.swatches{display:flex;gap:4px;margin-top:13px}.swatches i{width:15px;height:15px;border-radius:50%;display:block}.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;padding:11px 16px;border-radius:999px;background:rgba(25,25,28,.92);border:1px solid var(--line);backdrop-filter:blur(20px);transition:.25s;z-index:50;font-size:12px}.toast.show{opacity:1;transform:translateX(-50%)}
+.connect{position:fixed;inset:0;background:rgba(5,5,6,.78);backdrop-filter:blur(20px);display:none;align-items:center;justify-content:center;z-index:40}.connect.show{display:flex}.connectbox{width:min(520px,calc(100% - 28px));padding:28px;border:1px solid var(--line);border-radius:32px;background:rgba(25,25,28,.94)}.connectbox h2{font-size:30px;letter-spacing:-.05em;margin:0 0 8px}.connectbox p{color:var(--muted);font-size:13px;line-height:1.6}.field{margin-top:15px}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:7px}.field input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:15px;background:var(--panel);outline:0}.primary{margin-top:15px;width:100%;padding:14px;border:0;border-radius:16px;background:var(--accent);color:#0b0b0d;font-weight:700;cursor:pointer}
+@media(max-width:900px){.app{grid-template-columns:88px 1fr}aside{padding:22px 9px}.brand h1{font-size:16px}.brand small,.room span{display:none}.room{font-size:0;text-align:center}.room:before{content:"•";font-size:22px}.controls{grid-template-columns:repeat(2,1fr)}main{padding:25px 20px}.themeGrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.app{display:block}aside{height:68px;position:fixed;bottom:0;left:0;right:0;z-index:15;border-right:0;border-top:1px solid var(--line);padding:7px;background:rgba(15,15,17,.85)}.brand,.footer{display:none}.nav{flex-direction:row;overflow:auto}.room{min-width:64px;padding:9px}.room:before{display:none}.room span{display:block;font-size:11px}.room.active{background:var(--panel2)}main{padding:22px 14px 90px}.hero{border-radius:30px}.controls{grid-template-columns:1fr 1fr}.device{min-height:135px}.themeGrid{grid-template-columns:repeat(2,1fr)}.themes{padding:14px}}
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="side-logo">
-      <div class="logo-tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg></div>
-      <div><div class="logo-name">Lumen</div><div class="logo-sub">SMART HOME</div></div>
-    </div>
-    <nav class="side-nav" id="sideNav"></nav>
-    <div class="side-status"><div class="ss-card" id="sideStatus"></div></div>
-  </aside>
-  <main class="main">
-    <header class="topbar"><div class="topbar-in">
-      <div class="tb-head"><h1 id="greeting">你好</h1><p id="dateStr"></p></div>
-      <div class="tb-search" id="searchBox">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input id="searchInput" placeholder="搜索设备…" autocomplete="off">
-      </div>
-      <div class="tb-actions">
-        <button class="icon-btn" data-act="palette" title="主题库" id="paletteBtn"></button>
-        <span class="dot" id="statusDot" title="连接状态"></span>
-      </div>
-    </div></header>
-    <div class="view" id="view"></div>
-  </main>
+<aside>
+  <div class="brand"><small>SPATIAL HOME</small><h1>ATMO<span style="color:var(--accent)">S</span></h1></div>
+  <nav class="nav" id="rooms"></nav>
+  <div class="footer"><div class="status"><i class="dot on" id="statusDot"></i><span id="statusText">Demo mode</span></div></div>
+</aside>
+<main>
+  <div class="top">
+    <div><div class="eyebrow" id="date">MON · 28 SEP</div><div class="title" id="roomTitle">客厅</div></div>
+    <div class="rightTop"><button class="iconbtn" onclick="openConnect()">连接 HA</button><button class="themebtn" onclick="openThemes()">30 皮肤</button></div>
+  </div>
+  <section class="hero">
+    <h2>SPACE / LIVING</h2>
+    <div class="big" id="heroTemp">24.5°</div>
+    <div class="sub" id="heroSub">舒适 · 空调待机 · 3 个灯光正在工作</div>
+  </section>
+  <section class="section"><div><h3>空间控制</h3><p>点击操作 · 长按进入下一层</p></div></section>
+  <div class="controls" id="devices"></div>
+  <section class="section"><div><h3>场景</h3><p>把复杂的设备变成一个动作</p></div></section>
+  <div class="sceneRow">
+    <div class="scene" onclick="toast('回家场景：演示')"><strong>回家</strong><span>灯光 · 空调 · 窗帘</span></div>
+    <div class="scene" onclick="toast('观影场景：演示')"><strong>观影</strong><span>氛围灯 · 窗帘</span></div>
+    <div class="scene" onclick="toast('晚安场景：演示')"><strong>晚安</strong><span>关闭全屋 · 主卧</span></div>
+    <div class="scene" onclick="toast('离家场景：演示')"><strong>离家</strong><span>一键离开</span></div>
+  </div>
+</main>
 </div>
 
-<nav class="bottomnav" id="bottomnav"></nav>
-
-<div class="sheet" id="themeSheet">
-  <div class="sheet-mask" data-act="closeSheet"></div>
-  <div class="sheet-panel">
-    <div class="sheet-head">
-      <h3>主题库</h3><span class="cnt" id="themeCnt"></span>
-      <button class="icon-btn" data-act="closeSheet" id="sheetClose"></button>
-    </div>
-    <div class="tcats" id="sheetCats"></div>
-    <div class="tgrid" id="sheetGrid"></div>
+<div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
+  <div class="sheetbox">
+    <div class="sheethead"><div><div class="eyebrow" id="sheetEyebrow">DEVICE</div><h2 id="sheetTitle">主照明</h2></div><button class="close" onclick="closeSheet()">×</button></div>
+    <div class="children" id="children"></div>
+    <div class="slider" id="sliderWrap" style="display:none"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>亮度</span><b id="sliderVal">72%</b></div><input type="range" min="1" max="100" value="72" oninput="setSlider(this.value)"></div>
   </div>
 </div>
 
+<div class="themes" id="themes">
+  <div class="themePanel">
+    <div class="sheethead"><div><div class="eyebrow">THEME ENGINE</div><h2>选择你的家</h2></div><button class="close" onclick="closeThemes()">×</button></div>
+    <div class="themeGrid" id="themeGrid"></div>
+  </div>
+</div>
+
+<div class="connect" id="connect">
+ <div class="connectbox">
+  <h2>连接 Home Assistant</h2>
+  <p>输入你的 HA 地址和 Long-Lived Access Token。原型默认使用你的局域网地址。Token 只保存在当前浏览器。</p>
+  <div class="field"><label>HA 地址</label><input id="haUrl" value="http://192.168.0.141:8123"></div>
+  <div class="field"><label>Long-Lived Access Token</label><input id="haToken" type="password" placeholder="粘贴 Token"></div>
+  <button class="primary" onclick="connectHA()">连接并同步</button>
+  <div style="margin-top:12px;text-align:center"><button class="iconbtn" onclick="closeConnect()">先体验 Demo</button></div>
+ </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
-'use strict';
-/* ================= 工具 ================= */
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
-const store={
-  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+const E=(domain,id)=>`${domain}.${id}`;
+const rooms={
+ "客厅":[
+  {name:"主照明",entity:E("light","mijia_cn_group_1889711912066113536_group3_s_2"),type:"light",children:[
+   {name:"主灯带",entity:E("light","mijia_cn_group_1889713434753392640_group3_s_2"),type:"light"},
+   {name:"筒灯",entity:E("light","mijia_cn_group_1889712796141510656_group3_s_2"),type:"light",children:[
+    {name:"吧台",entity:E("light","mijia_cn_group_1889713671005958144_group3_s_2"),type:"light"},
+    {name:"沙发",entity:E("light","mijia_cn_group_1889713530240909312_group3_s_2"),type:"light"},
+    {name:"走廊",entity:E("light","mijia_cn_group_1889714081804734464_group3_s_2"),type:"light"}]}]},
+  {name:"电视氛围灯",entity:E("switch","lumi_cn_719957832_acn055_on_p_5_1"),type:"switch"},
+  {name:"黄石吊灯",entity:E("switch","lumi_cn_719957832_acn055_on_p_7_1"),type:"switch"},
+  {name:"书柜灯",entity:E("switch","lumi_cn_719957832_acn055_on_p_9_1"),type:"switch"},
+  {name:"磁吸轨道灯",entity:E("switch","lumi_cn_719958159_acn055_on_p_9_1"),type:"switch",children:[
+   {name:"灯 1",entity:"light.lightbulb",type:"light"},{name:"灯 2",entity:"light.lightbulb_2",type:"light"},{name:"灯 3",entity:"light.lightbulb_3",type:"light"},{name:"灯 4",entity:"light.lightbulb_4",type:"light"}]},
+  {name:"风扇",entity:E("fan","dmaker_cn_819891436_p5c_s_2_fan"),type:"fan"},
+  {name:"空调",entity:E("climate","thermostat_3"),type:"climate",value:"24.5°"},
+  {name:"窗帘",entity:E("cover","curtain_3"),type:"cover",value:"72%"}
+ ],
+ "餐厅":[{name:"吊灯",entity:E("light","yeelink_cn_827200175_ceiling10_s_2_light"),type:"light"},{name:"空调",entity:E("climate","thermostat_4"),type:"climate",value:"24°"}],
+ "阳台":[{name:"晾衣架",entity:E("cover","lumi_cn_649512998_acn02_s_2_airer"),type:"cover"},{name:"晾衣架灯",entity:E("light","lumi_cn_649512998_acn02_s_3_light"),type:"light"},{name:"筒灯",entity:E("light","mijia_cn_group_1865750122755932160_group3_s_2"),type:"light"}],
+ "主卧":[
+  {name:"床头灯带",entity:E("switch","lumi_cn_719968765_acn055_on_p_9_1"),type:"switch",children:[{name:"亮度",entity:E("light","mijia_cn_group_1869009349062582272_group3_s_2"),type:"light"}]},
+  {name:"主灯带",entity:E("switch","lumi_cn_719968929_acn055_on_p_9_1"),type:"switch"},
+  {name:"床顶筒灯",entity:E("light","mijia_cn_group_1889715620216713216_group3_s_2"),type:"light"},
+  {name:"阅读灯",entity:E("light","lemesh_cn_1122234726_wy0c14_s_2_light"),type:"light"},
+  {name:"过道",entity:E("light","mijia_cn_group_1889715489580920832_group3_s_2"),type:"light"},
+  {name:"空调",entity:E("climate","thermostat_2"),type:"climate",value:"22.5°"},{name:"窗帘",entity:E("cover","curtain"),type:"cover",value:"40%"}],
+ "主卫":[{name:"洗墙灯",entity:E("switch","lumi_cn_724724169_acn049_on_p_7_1"),type:"switch"},{name:"筒灯",entity:E("light","mijia_cn_group_1889711242592280576_group3_s_2"),type:"light"},{name:"浴霸灯",entity:E("light","yeelink_cn_822919487_v21_s_2_light"),type:"light"},{name:"浴霸",entity:E("climate","yeelink_cn_822919487_v21"),type:"climate"}],
+ "公卫":[{name:"淋浴灯",entity:E("switch","lumi_cn_724746650_acn049_on_p_7_1"),type:"switch"},{name:"洗漱灯",entity:E("switch","lumi_cn_724746650_acn049_on_p_5_1"),type:"switch",children:[{name:"亮度",entity:E("light","mijia_cn_group_1889715339626176512_group3_s_2"),type:"light"}]},{name:"浴霸灯",entity:E("light","yeelink_cn_683069141_v10_s_2_light"),type:"light"},{name:"浴霸",entity:E("climate","yeelink_cn_683069141_v10"),type:"climate"}],
+ "儿童房":[{name:"灯带",entity:E("light","lemesh_cn_1099893307_wy0c15_s_2_light"),type:"light"},{name:"筒灯",entity:E("light","mijia_cn_group_1889714949211697152_group3_s_2"),type:"light"},{name:"空调",entity:E("climate","thermostat_1"),type:"climate",value:"24°"},{name:"窗帘",entity:E("cover","curtain_5"),type:"cover",value:"55%"}],
+ "次卧":[{name:"床头灯带",entity:E("switch","lumi_cn_761343481_acn054_on_p_9_1"),type:"switch"},{name:"灯带",entity:E("light","lemesh_cn_1099880643_wy0c15_s_2_light"),type:"light"},{name:"筒灯",entity:E("light","mijia_cn_group_1889714820471730176_group3_s_2"),type:"light"},{name:"空调",entity:E("climate","thermostat_5"),type:"climate",value:"24°"},{name:"窗帘",entity:E("cover","curtain_4"),type:"cover",value:"50%"}],
+ "玄关":[{name:"射灯",entity:"yeelink.light.ml13",type:"light"},{name:"餐边柜",entity:E("light","mijia_cn_group_1889711510780256256_group3_s_2"),type:"light"}],
+ "多功能房":[{name:"书桌",entity:E("light","yeelink_cn_793111174_ml13_s_2_light"),type:"light"},{name:"筒灯",entity:E("light","mijia_cn_group_1889714550832508929_group3_s_2"),type:"light"},{name:"空调",entity:E("climate","xiaomi_cn_928295250_h39h00"),type:"climate",value:"24°"},{name:"窗帘",entity:E("cover","curtain_2"),type:"cover",value:"50%"}]
 };
-
-/* ================= 图标库（线性风格） ================= */
-const S='fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-const ICONS={
-home:`<path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>`,
-grid:`<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>`,
-sliders:`<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1.5 14h5M9.5 8h5M17.5 16h5"/>`,
-light:`<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.9 10.6c.6.5 1 1.3 1 2.2v.2h5.8v-.2c0-.9.4-1.7 1-2.2A6 6 0 0 0 12 3z"/>`,
-switch:`<rect x="3" y="8" width="18" height="8" rx="4"/><circle cx="15" cy="12" r="2.2"/>`,
-fan:`<path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M17.7 7.7A2.5 2.5 0 1 1 19.5 12H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>`,
-climate:`<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/>`,
-cover:`<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 8h16M4 12h16M4 16h16"/><path d="M17.5 16v3"/>`,
-media:`<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>`,
-lock:`<rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>`,
-unlock:`<rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 7.8-1.3"/>`,
-spark:`<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/>`,
-zap:`<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>`,
-code:`<path d="M8 9l-4 3 4 3"/><path d="M16 9l4 3-4 3"/><path d="M13 6l-2 12"/>`,
-activity:`<path d="M22 12h-4l-3 8-4-16-3 8H2"/>`,
-alert:`<circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.5h.01"/>`,
-vacuum:`<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2.5V4"/><path d="M2.5 12H4"/><path d="M20 12h1.5"/>`,
-drop:`<path d="M12 3s6 6.6 6 10.8A6 6 0 0 1 6 13.8C6 9.6 12 3 12 3z"/>`,
-flame:`<path d="M12 22c4.4 0 7-3.1 7-7 0-4.8-7-13-7-13S5 10.2 5 15c0 3.9 2.6 7 7 7z"/>`,
-video:`<path d="M22.5 7.5l-6 4.5 6 4.5v-9z"/><rect x="2" y="6" width="13" height="12" rx="2.5"/>`,
-bell:`<path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/>`,
-battery:`<rect x="2" y="7" width="16" height="10" rx="2.5"/><path d="M22 11v2"/>`,
-pin:`<path d="M21 10.5C21 16.5 12 22 12 22S3 16.5 3 10.5a9 9 0 0 1 18 0z"/><circle cx="12" cy="10.5" r="3"/>`,
-sun:`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>`,
-moon:`<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>`,
-cloud:`<path d="M18 10h-1.3A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>`,
-rain:`<path d="M19 12.8A6 6 0 0 0 7.7 10 4.5 4.5 0 0 0 6 18.5h11a3.5 3.5 0 0 0 2-5.7z"/><path d="M8 20.5v1.5M12 21.5v1.5M16 20.5v1.5"/>`,
-snow:`<path d="M19 12.8A6 6 0 0 0 7.7 10 4.5 4.5 0 0 0 6 18.5h11a3.5 3.5 0 0 0 2-5.7z"/><path d="M8 20.5h.01M12 21.5h.01M16 20.5h.01"/>`,
-partly:`<circle cx="7" cy="7" r="3"/><path d="M7 2.5V1M2.5 7H1M3.6 3.6l-1-1M10.4 3.6l1-1"/><path d="M18 12h-1A6.5 6.5 0 1 0 9 20h9a4 4 0 0 0 0-8z"/>`,
-fog:`<path d="M3 10h18M5 14h14M7 18h10"/>`,
-bolt:`<path d="M19 11.8A6 6 0 0 0 7.7 9 4.5 4.5 0 0 0 6 17.5h4"/><path d="M13 12l-3 6h4l-2.5 5"/>`,
-search:`<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>`,
-star:`<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/>`,
-power:`<path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v9"/>`,
-plus:`<path d="M12 5v14M5 12h14"/>`,
-minus:`<path d="M5 12h14"/>`,
-x:`<path d="M18 6L6 18M6 6l12 12"/>`,
-check:`<path d="M20 6L9 17l-5-5"/>`,
-chevU:`<path d="M5 16l7-7 7 7"/>`,
-chevD:`<path d="M5 9l7 7 7-7"/>`,
-play:`<path d="M7 4.5l13 7.5-13 7.5z"/>`,
-pause:`<path d="M7 4.5v15M17 4.5v15"/>`,
-stop:`<rect x="6" y="6" width="12" height="12" rx="2"/>`,
-prev:`<path d="M18 5v14L8 12z"/><path d="M6 5v14"/>`,
-next:`<path d="M6 5v14l10-7z"/><path d="M18 5v14"/>`,
-refresh:`<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v5.5h-5.5"/>`,
-wifi:`<path d="M2.5 9.5a15 15 0 0 1 19 0"/><path d="M6 13.5a9.5 9.5 0 0 1 12 0"/><path d="M9.5 17.2a4.7 4.7 0 0 1 5 0"/><path d="M12 20.5h.01"/>`,
-palette:`<path d="M12 3a9 9 0 1 0 .3 18c1.3 0 1.9-.8 1.9-1.7 0-.8-.6-1.3-.6-2.1 0-1 .8-1.7 1.9-1.7H17a4.5 4.5 0 0 0 4.5-4.5C21.5 6.5 17.2 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>`,
-cpu:`<rect x="5" y="5" width="14" height="14" rx="2.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2.5V5M15 2.5V5M9 19v2.5M15 19v2.5M2.5 9H5M2.5 15H5M19 9h2.5M19 15h2.5"/>`,
-clock:`<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>`,
-key:`<circle cx="7.5" cy="16.5" r="4.5"/><path d="M10.8 13.2L21 3"/><path d="M18 6l3 3"/>`,
-info:`<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>`,
-};
-const icon=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" ${S}>${ICONS[n]||ICONS.cpu}</svg>`;
-
-/* ================= 主题库（39 款） =================
-   v: [bg, surface, surface2, brd, text, text2, muted, accent, accent2, onAccent, glow1, glow2, glowOp] */
-const T=(id,n,c,d,v,o={})=>({id,n,c,d,v,...o});
-const THEMES=[
-/* —— 深色 —— */
-T('midnight','Midnight 午夜蓝','深色',1,['#0b1220','#141d31','#1a2540','rgba(255,255,255,.07)','#e8edf7','#9aa8bd','#64748b','#5ea2fa','#818cf8','#0b1220','#3b82f6','#8b5cf6',.16]),
-T('aurora','Aurora 极光','深色',1,['#06171a','#0c2427','#102e31','rgba(148,233,220,.08)','#e4f7f2','#8fc4bb','#4e7a72','#2dd4bf','#34d399','#04201c','#14b8a6','#22d3ee',.17],{r:22}),
-T('graphite','Graphite 石墨','深色',1,['#101012','#17171a','#1e1e22','rgba(255,255,255,.06)','#e7e7ea','#9d9da6','#6b6b74','#d4d4d8','#a1a1aa','#141416','#52525b','#3f3f46',.1],{r:18}),
-T('plum','Plum 紫夜','深色',1,['#150e1d','#1e142a','#261a35','rgba(216,180,254,.08)','#f0e8f8','#b3a3c4','#7a6b8a','#c084fc','#e879f9','#1c0f2e','#a855f7','#d946ef',.16]),
-T('ember','Ember 暖烬','深色',1,['#170f0d','#241612','#2d1c16','rgba(253,186,116,.08)','#f7ece4','#c4a696','#8a6f5f','#fb923c','#f87171','#241109','#f97316','#f43f5e',.15]),
-T('nord','Nord 北境','深色',1,['#2e3440','#3b4252','#434c5e','rgba(236,239,244,.07)','#eceff4','#c0c8d0','#7b88a1','#88c0d0','#81a1c1','#242933','#88c0d0','#5e81ac',.12],{r:20}),
-T('dracula','Dracula','深色',1,['#282a36','#343746','#41435a','rgba(255,255,255,.08)','#f8f8f2','#b6b8c8','#6f7189','#bd93f9','#ff79c6','#1e2030','#bd93f9','#ff79c6',.14]),
-T('tokyo','Tokyo Night 夜都','深色',1,['#1a1b26','#24283b','#2f334d','rgba(192,202,245,.08)','#c0caf5','#9aa5ce','#565f89','#7aa2f7','#bb9af7','#1a1b26','#7aa2f7','#9d7cd8',.16]),
-T('onedark','One Dark 深空','深色',1,['#282c34','#31353f','#3a3f4b','rgba(255,255,255,.07)','#e2e5ea','#a6adba','#737c8c','#61afef','#c678dd','#282c34','#61afef','#56b6c2',.14]),
-T('mocha','Catppuccin 卡布','深色',1,['#1e1e2e','#28283c','#323148','rgba(205,214,244,.08)','#cdd6f4','#a6adc8','#6c7086','#cba6f7','#f5c2e7','#1e1e2e','#cba6f7','#f38ba8',.15]),
-T('rosey','Rosé Pine 玫瑰','深色',1,['#191724','#1f1d2e','#26233a','rgba(224,222,244,.08)','#e0def4','#9f9cbc','#6e6a86','#ebbcba','#c4a7e7','#191724','#ebbcba','#9ccfd8',.14]),
-T('ocean','Ocean 深海','深色',1,['#0a1521','#112233','#172b40','rgba(125,211,252,.08)','#e3eef7','#8fb0c7','#5a7d96','#38bdf8','#22d3ee','#081420','#0ea5e9','#2dd4bf',.15]),
-/* —— 经典 —— */
-T('gruvbox','Gruvbox','经典',1,['#282828','#3c3836','#45403d','rgba(254,240,193,.08)','#ebdbb2','#bdae93','#928374','#fabd2f','#fe8019','#282828','#fabd2f','#fe8019',.12]),
-T('monokai','Monokai','经典',1,['#272822','#31332c','#3b3d35','rgba(248,248,240,.08)','#f8f8f2','#c0c0b0','#8f9080','#a6e22e','#fd971f','#272822','#a6e22e','#fd971f',.12]),
-T('soldark','Solarized Dark','经典',1,['#002b36','#073642','#0a4350','rgba(147,221,220,.09)','#eee8d5','#93a1a1','#586e75','#2aa198','#268bd2','#002b36','#2aa198','#b58900',.12]),
-T('sollight','Solarized Light','经典',0,['#fdf6e3','#fffbf0','#f2e9d3','rgba(7,54,66,.08)','#073642','#586e75','#93a1a1','#268bd2','#cb4b16','#fdf6e3','#268bd2','#b58900',.3]),
-T('everforest','Everforest 森语','经典',1,['#2b3339','#343f44','#3d484d','rgba(211,198,170,.08)','#d3c6aa','#a7ab96','#7a8478','#a7c080','#83c092','#2b3339','#a7c080','#7fbbb3',.13]),
-T('contrast','High Contrast 极简黑','经典',1,['#000000','#121212','#1e1e1e','rgba(255,255,255,.14)','#ffffff','#c8c8c8','#8a8a8a','#ffd400','#ffffff','#000000','#ffd400','#ffd400',.06],{r:16}),
-/* —— 自然 —— */
-T('forest','Forest 松林','自然',1,['#0f1a12','#16241a','#1d2e22','rgba(134,239,172,.08)','#e2efe6','#9db8a6','#6b8577','#4ade80','#a3e635','#0c1810','#22c55e','#84cc16',.14]),
-T('sage','Sage 鼠尾草','自然',0,['#eef2ea','#ffffff','#f6f8f3','rgba(31,42,29,.07)','#1f2a1d','#57654f','#96a391','#5f8d4e','#7fb069','#ffffff','#5f8d4e','#94b872',.32]),
-T('mint','Mint 薄荷','自然',0,['#eafaf1','#ffffff','#f2fbf6','rgba(6,52,40,.07)','#0f3d2e','#527a6b','#8fb8a8','#0fae7d','#34d399','#ffffff','#10b981','#2dd4bf',.3]),
-T('terracotta','Terracotta 陶土','自然',0,['#f7efe8','#ffffff','#f5eae1','rgba(61,43,32,.08)','#3d2b20','#776052','#b3a091','#c05621','#e07a3f','#ffffff','#d97706','#f97316',.3]),
-T('matcha','Matcha 抹茶','自然',0,['#f3f6ec','#ffffff','#ecf1de','rgba(44,53,23,.07)','#2c3517','#5c684e','#9aa78d','#679436','#8fbf4d','#ffffff','#679436','#a3c255',.3]),
-T('desert','Desert 暮沙','自然',1,['#1c1712','#272019','#302721','rgba(232,220,200,.08)','#ece0cf','#bfae99','#8a7a65','#e0a458','#d97862','#201913','#e0a458','#d97862',.13]),
-/* —— 浅色 —— */
-T('porcelain','Porcelain 瓷白','浅色',0,['#f5f6f8','#ffffff','#eff1f4','rgba(15,23,42,.07)','#111827','#4b5563','#9aa3af','#3b82f6','#6366f1','#ffffff','#60a5fa','#a5b4fc',.4]),
-T('ivory','Ivory 象牙','浅色',0,['#faf6ee','#fffef9','#f3ecdd','rgba(43,33,24,.08)','#2b2118','#6b5c4a','#b0a390','#d97706','#f59e0b','#ffffff','#d97706','#fbbf24',.35]),
-T('peach','Peach 蜜桃','浅色',0,['#fdf1ea','#ffffff','#fbe7dc','rgba(67,20,7,.07)','#431407','#8a5a44','#c09a88','#f97316','#fb7185','#ffffff','#fb923c','#fb7185',.38]),
-T('lavender','Lavender 薰衣草','浅色',0,['#f4f2fb','#ffffff','#ebe7f7','rgba(46,16,101,.07)','#2e1065','#6b5b95','#a49ac2','#8b5cf6','#a78bfa','#ffffff','#8b5cf6','#c4b5fd',.4]),
-T('mist','Mist 薄雾','浅色',0,['#edf3f5','#ffffff','#e2ecef','rgba(22,78,99,.08)','#164e63','#4d7382','#8fb0ba','#0891b2','#22d3ee','#ffffff','#22d3ee','#67e8f9',.4]),
-T('sakura','Sakura 樱粉','浅色',0,['#fdf0f4','#ffffff','#fae4ec','rgba(80,7,36,.07)','#500724','#96566f','#c39aab','#ec4899','#f472b6','#ffffff','#f472b6','#fda4af',.38]),
-T('sky','Sky 晴空','浅色',0,['#eef5fd','#ffffff','#e2eefa','rgba(12,74,110,.07)','#0c4a6e','#48718a','#93b3c4','#0ea5e9','#38bdf8','#ffffff','#38bdf8','#7dd3fc',.4]),
-T('linen','Linen 亚麻','浅色',0,['#f5f1ea','#fffefb','#ece5d8','rgba(68,64,60,.08)','#44403c','#78716c','#a8a29e','#b45309','#d97706','#ffffff','#b45309','#d97706',.32]),
-/* —— 特色 —— */
-T('cyberpunk','Cyberpunk 赛博','特色',1,['#0a0118','#150a2e','#1d1140','rgba(252,238,10,.1)','#eef2ff','#a8a4d0','#5d5880','#fcee0a','#00f0ff','#0a0118','#fcee0a','#ff2a6d',.2],{r:16}),
-T('synthwave','Synthwave 蒸汽波','特色',1,['#140f2b','#1c1538','#251c48','rgba(255,94,223,.1)','#f2ecff','#b4a8e0','#7a6fae','#ff5edf','#00e5ff','#140f2b','#8b5cf6','#3b82f6',.3]),
-T('matrix','Matrix 代码雨','特色',1,['#030f05','#081c0e','#0b2612','rgba(134,239,172,.1)','#dcfce7','#86c79b','#4e8a63','#22c55e','#86efac','#030f05','#22c55e','#4ade80',.22],{r:16}),
-T('glass-aurora','Glass 极光玻璃','特色',1,['#0b1020','rgba(255,255,255,.07)','rgba(255,255,255,.11)','rgba(255,255,255,.14)','#eaf2ff','#a7b6d8','#6b7ba0','#67e8f9','#a78bfa','#0b1020','#22d3ee','#a855f7',.5],{g:1}),
-T('glass-sunset','Glass 晚霞玻璃','特色',1,['#180b16','rgba(255,255,255,.08)','rgba(255,255,255,.12)','rgba(255,255,255,.15)','#ffeff5','#e3b1c2','#a97e8f','#fda4af','#fcd34d','#180b16','#fb7185','#fbbf24',.45],{g:1}),
-T('neo-light','Neo 云白拟物','特色',0,['#e0e5ec','#e4e9f0','#eef2f8','rgba(0,0,0,0)','#3a4556','#66738a','#93a0b4','#6d5dfc','#46c2cb','#ffffff','#6d5dfc','#46c2cb',.25],{neo:1,r:20,nd:'#a3b1c6',nl:'#ffffff'}),
-T('neo-dark','Neo 夜岩拟物','特色',1,['#2a2d34','#2d3138','#333841','rgba(0,0,0,0)','#d5dae3','#9aa4b5','#6b7686','#7c9eff','#9d8cff','#2a2d34','#7c9eff','#9d8cff',.2],{neo:1,r:20,nd:'#1f2229',nl:'#383e48'}),
+const themes=[
+["Cupertino","#0b0b0d","#f5f5f7","#d8ff63"],["Midnight","#050608","#f5f5f7","#8ea8ff"],["Liquid Glass","#0b1016","#f5fbff","#7de8ff"],["Snow","#f4f4f0","#151515","#586bff"],["Graphite","#18191b","#f4f4f5","#c8c8cc"],["Titanium","#202123","#f3f3f0","#bfc4cc"],["Warm Sand","#28231d","#fff7e7","#e7a85b"],["Japanese","#e9e4d8","#25221d","#b34b38"],["Nordic","#e9eef0","#182127","#74a9b7"],["Concrete","#2c2d2b","#eeeeea","#c8d06b"],["Neon","#07070a","#f6f7ff","#ff3bd4"],["Cyber","#080b12","#dff7ff","#00e5ff"],["Terminal","#050805","#b7ffb7","#61ff75"],["OLED","#000000","#ffffff","#ffffff"],["Sunset","#21110f","#fff2ea","#ff8a5b"],["Ocean","#06131c","#e6f7ff","#4ed8ff"],["Forest","#08120d","#eaf7ee","#8be28f"],["Lavender","#14111b","#f4efff","#c9a7ff"],["Clay","#241b18","#fff3eb","#e39a7b"],["Brutalist","#f1f0ec","#0b0b0b","#ff4b22"],["Swiss","#f5f5f3","#111","#ff3b30"],["Bauhaus","#f2eee4","#161616","#e33d32"],["Glasshouse","#07100e","#e9fff8","#8fffd2"],["Aurora","#071019","#effaff","#8dffcf"],["Monochrome","#111","#f5f5f5","#aaa"],["Retro","#18100c","#ffe9b7","#ff9d3d"],["Space","#03040b","#edf0ff","#7d9cff"],["Luxury","#090806","#fff6dc","#d9b76c"],["Paper","#ddd9cf","#25231f","#526c5a"],["Ambient","#10100f","#f4efe6","#e0b878"]
 ];
-const THEME_VARS=['--bg','--surface','--surface2','--brd','--text','--text2','--muted','--accent','--accent2','--on-accent','--glow1','--glow2','--glow-op'];
-function applyTheme(t){
-  const r=document.documentElement.style;
-  THEME_VARS.forEach((k,i)=>r.setProperty(k,t.v[i]));
-  r.setProperty('--radius',(t.r||24)+'px');
-  r.setProperty('--shadow',t.d?'0 14px 34px rgba(0,0,0,.45)':'0 14px 34px rgba(15,23,42,.13)');
-  r.setProperty('--neo-d',t.nd||'transparent');
-  r.setProperty('--neo-l',t.nl||'transparent');
-  document.body.classList.toggle('theme-glass',!!t.g);
-  document.body.classList.toggle('theme-neo',!!t.neo);
-  const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t.v[0];
-  settings.themeId=t.id;store.set('lumen.settings',settings);
-  document.querySelectorAll('.sw').forEach(el=>el.classList.toggle('active',el.dataset.theme===t.id));
-}
-
-/* ================= 状态 ================= */
-let settings=store.get('lumen.settings',{url:'http://192.168.0.141:8123',token:'',themeId:'midnight',density:'normal'});
-function applyDensity(d){document.body.setAttribute('data-density',d||'normal');}
-let favs=new Set(store.get('lumen.favs',[]));
-const ents=new Map();          // entity_id -> normalized entity
-const areas=new Map();         // area_id -> name
-const entArea=new Map();       // entity_id -> area_id
-let demo=false,connState='off';// off|on|wait|fail|demo
-let tab='home',domFilter='all',areaFilter='all',query='',themeCat='全部';
-
-function norm(s){
-  const attrs=s.attributes||{};
-  const eid=s.entity_id;
-  return {entity_id:eid,domain:eid.split('.')[0],state:s.state,attributes:attrs,
-    name:NAME_MAP[eid]||attrs.friendly_name||eid.split('.')[1].replace(/_/g,' '),last_changed:s.last_changed};
-}
-const ent=eid=>ents.get(eid);
-const roomName=eid=>{
-  if(CFG_AREA[eid])return CFG_AREA[eid];
-  const a=entArea.get(eid);
-  if(a&&areas.has(a))return areas.get(a);
-  return '未分组';
-};
-
-/* ================= 域元数据 ================= */
-const DOMAINS={
-  light:{ic:'light',c:'#fbbf24',t:'灯光',tg:1},
-  switch:{ic:'switch',c:'#34d399',t:'开关',tg:1},
-  climate:{ic:'climate',c:'#f97316',t:'温控',tg:0},
-  cover:{ic:'cover',c:'#818cf8',t:'窗帘',tg:0},
-  media_player:{ic:'media',c:'#c084fc',t:'媒体',tg:0},
-  fan:{ic:'fan',c:'#22d3ee',t:'风扇',tg:1},
-  humidifier:{ic:'drop',c:'#38bdf8',t:'加湿器',tg:1},
-  lock:{ic:'lock',c:'#f59e0b',t:'门锁',tg:0},
-  vacuum:{ic:'vacuum',c:'#94a3b8',t:'扫地机',tg:0},
-  camera:{ic:'video',c:'#94a3b8',t:'摄像头',tg:0},
-  scene:{ic:'spark',c:'#f472b6',t:'场景',tg:0},
-  script:{ic:'code',c:'#facc15',t:'脚本',tg:0},
-  automation:{ic:'zap',c:'#fb923c',t:'自动化',tg:1},
-  sensor:{ic:'activity',c:'#94a3b8',t:'传感器',tg:0},
-  binary_sensor:{ic:'activity',c:'#94a3b8',t:'传感器',tg:0},
-  water_heater:{ic:'flame',c:'#f87171',t:'热水器',tg:1},
-  siren:{ic:'bell',c:'#f87171',t:'警报器',tg:1},
-  input_boolean:{ic:'power',c:'#34d399',t:'开关',tg:1},
-  device_tracker:{ic:'pin',c:'#94a3b8',t:'追踪',tg:0},
-  person:{ic:'pin',c:'#94a3b8',t:'成员',tg:0},
-  weather:{ic:'cloud',c:'#38bdf8',t:'天气',tg:0},
-  _: {ic:'cpu',c:'#94a3b8',t:'设备',tg:0},
-};
-const dmeta=e=>DOMAINS[e.domain]||DOMAINS._;
-const SENSOR_IC={temperature:'climate',humidity:'drop',battery:'battery',power:'zap',energy:'zap',illuminance:'sun',carbon_dioxide:'fan',atmospheric_pressure:'cloud',timestamp:'clock',current:'zap',voltage:'zap'};
-const BS_IC={motion:'activity',occupancy:'activity',door:'lock',window:'lock',garage_door:'lock',opening:'lock',smoke:'alert',gas:'alert',safety:'alert',problem:'alert',moisture:'drop',plug:'power',battery:'battery',connectivity:'wifi',light:'sun',sound:'activity',vibration:'activity'};
-const COND={sunny:['晴','sun'],['clear-night']:['晴夜','moon'],cloudy:['多云','cloud'],partlycloudy:['局部多云','partly'],fog:['雾','fog'],hail:['冰雹','rain'],lightning:['雷暴','bolt'],['lightning-risky']:['雷暴','bolt'],pouring:['大雨','rain'],rainy:['雨','rain'],snowy:['雪','snow'],['snowy-rainy']:['雨夹雪','snow'],windy:['大风','fan'],['windy-variant']:['大风','fan'],exceptional:['天气预警','alert']};
-const BS_LABEL={door:['打开','关闭'],window:['打开','关闭'],garage_door:['打开','关闭'],motion:['检测到移动','无动静'],occupancy:['有人','无人'],moving:['移动中','静止'],presence:['在家','离开'],vibration:['检测到震动','无震动'],sound:['检测到声音','安静'],smoke:['烟雾警报','正常'],gas:['气体警报','正常'],safety:['警报','正常'],problem:['异常','正常'],moisture:['检测到水','干燥'],plug:['使用中','空闲'],battery:['电量低','正常'],connectivity:['在线','离线'],light:['明亮','昏暗'],_:['触发','正常']};
-
-function isOn(e){
-  const d=e.domain,s=e.state;
-  if(['light','switch','input_boolean','fan','humidifier','water_heater','siren','automation'].includes(d))return s==='on';
-  if(d==='media_player')return s==='playing'||s==='on';
-  if(d==='cover')return s==='open'||s==='opening';
-  if(d==='climate')return s!=='off';
-  if(d==='vacuum')return s==='cleaning'||s==='returning';
-  if(d==='lock')return s==='unlocked';
-  if(d==='person'||d==='device_tracker')return s==='home';
-  return s==='on';
-}
-function stateLabel(e){
-  const d=e.domain,s=e.state;
-  if(s==='unavailable')return '不可用';
-  if(s==='unknown')return '未知';
-  if(d==='climate')return {off:'已关闭',heat:'制热',cool:'制冷',heat_cool:'智能模式',auto:'自动',dry:'除湿',fan_only:'送风'}[s]||s;
-  if(d==='cover')return {open:'已打开',opening:'打开中',closed:'已关闭',closing:'关闭中'}[s]||s;
-  if(d==='media_player')return {playing:'播放中',paused:'已暂停',idle:'空闲',standby:'待机',off:'已关闭',on:'已开启'}[s]||s;
-  if(d==='lock')return s==='locked'?'已上锁':'未上锁';
-  if(d==='vacuum')return {docked:'位于充电座',cleaning:'清扫中',paused:'已暂停',returning:'回充中',error:'故障',idle:'空闲'}[s]||s;
-  if(d==='scene')return '轻点执行';
-  if(d==='script')return '轻点运行';
-  if(d==='automation')return s==='on'?'已启用':'已停用';
-  if(d==='person'||d==='device_tracker')return s==='home'?'在家':'外出';
-  if(d==='weather')return (COND[s]||[s])[0];
-  if(d==='binary_sensor'){const m=BS_LABEL[e.attributes.device_class]||BS_LABEL._;return s==='on'?m[0]:m[1];}
-  return (s==='on')?'已开启':'已关闭';
-}
-function entIcon(e){
-  const d=e.domain;
-  if(d==='sensor')return SENSOR_IC[e.attributes.device_class]||'activity';
-  if(d==='binary_sensor')return BS_IC[e.attributes.device_class]||'activity';
-  return dmeta(e).ic;
-}
-function tileColor(e){
-  const d=e.domain,s=e.state;
-  if(d==='lock')return s==='unlocked'?'#f87171':'#34d399';
-  if(d==='binary_sensor')return s==='on'?'#fbbf24':'#94a3b8';
-  return dmeta(e).c;
-}
-
-/* ================= 自定义房间（用户配置区） =================
-   在这里维护你的房间和实体：
-   - 配置后面板【只显示】这里列出的实体，显示名以 name 为准，按房间分组
-   - 追加房间：在 USER_ROOMS 数组里再加一个 {name, items:[...]} 即可 */
-const USER_ROOMS=[
-  {name:'客厅',items:[
-    {id:'light.mijia_cn_group_1889711912066113536_group3_s_2',name:'客厅主照明'},
-    {id:'switch.lumi_cn_719957832_acn055_on_p_5_1',name:'电视氛围灯'},
-    {id:'switch.lumi_cn_719957832_acn055_on_p_7_1',name:'黄石吊灯'},
-    {id:'switch.lumi_cn_719957832_acn055_on_p_9_1',name:'书柜灯'},
-    {id:'switch.lumi_cn_719958159_acn055_on_p_9_1',name:'磁吸轨道灯'},
-    {id:'light.mijia_cn_group_1889713671005958144_group3_s_2',name:'吧台灯'},
-    {id:'light.mijia_cn_group_1889713434753392640_group3_s_2',name:'主灯带'},
-    {id:'light.mijia_cn_group_1889712796141510656_group3_s_2',name:'筒灯'},
-    {id:'light.mijia_cn_group_1889713954561867776_group3_s_2',name:'过道'},
-    {id:'light.mijia_cn_group_1889713530240909312_group3_s_2',name:'沙发'},
-    {id:'light.mijia_cn_group_1889714081804734464_group3_s_2',name:'走廊'},
-    {id:'fan.dmaker_cn_819891436_p5c_s_2_fan',name:'风扇'},
-    {id:'climate.thermostat_3',name:'空调'},
-    {id:'cover.curtain_3',name:'窗帘'},
-  ]},
-];
-const NAME_MAP={},CFG_AREA={},WHITE_LIST=new Set(),CFG_ORDER={};
-let __o=0;
-USER_ROOMS.forEach(r=>r.items.forEach(it=>{NAME_MAP[it.id]=it.name;CFG_AREA[it.id]=r.name;WHITE_LIST.add(it.id);CFG_ORDER[it.id]=__o++;}));
-function applyWhitelist(){
-  if(!WHITE_LIST.size||demo)return;
-  [...ents.keys()].forEach(id=>{if(!WHITE_LIST.has(id)&&id.split('.')[0]!=='weather')ents.delete(id);});
-}
-
-/* ================= 演示数据 ================= */
-function loadDemo(){
-  demo=true;
-  const D=(eid,state,attrs={})=>ents.set(eid,norm({entity_id:eid,state,attributes:{friendly_name:eid.split('.')[1],...attrs},last_changed:new Date().toISOString()}));
-  ents.clear();entArea.clear();areas.clear();
-  areas.set('living','客厅');areas.set('bed','卧室');areas.set('kitchen','厨房');areas.set('study','书房');
-  D('weather.home','sunny',{temperature:26,humidity:45,wind_speed:3,wind_speed_unit:'km/h',temperature_unit:'°C',friendly_name:'天气'});
-  D('light.living_main','on',{friendly_name:'客厅吸顶灯',brightness:200,supported_color_modes:['color_temp','xy'],color_temp_kelvin:4200,min_color_temp_kelvin:2700,max_color_temp_kelvin:6500});
-  D('light.living_strip','on',{friendly_name:'电视氛围灯带',brightness:160,supported_color_modes:['hs'],rgb_color:[147,112,255]});
-  D('switch.living_tv','on',{friendly_name:'电视插座'});
-  D('media_player.living_tv','playing',{friendly_name:'客厅电视',media_title:'星际穿越',media_artist:'电影 · Apple TV',volume_level:.35});
-  D('cover.living_curtain','open',{friendly_name:'客厅纱帘',current_position:60});
-  D('sensor.living_temp','22.5',{friendly_name:'客厅温度',device_class:'temperature',unit_of_measurement:'°C'});
-  D('sensor.living_hum','48',{friendly_name:'客厅湿度',device_class:'humidity',unit_of_measurement:'%'});
-  D('fan.living','off',{friendly_name:'客厅风扇',percentage:0});
-  D('light.bed_main','off',{friendly_name:'卧室主灯',supported_color_modes:['onoff']});
-  D('light.bed_side','on',{friendly_name:'床头灯',brightness:77,supported_color_modes:['color_temp'],color_temp_kelvin:2700,min_color_temp_kelvin:2200,max_color_temp_kelvin:4000});
-  D('climate.bed_ac','cool',{friendly_name:'卧室空调',temperature:24,min_temp:16,max_temp:30,target_temp_step:.5,hvac_modes:['off','cool','heat','fan_only','dry']});
-  D('humidifier.bed','on',{friendly_name:'卧室加湿器',humidity:55,min_humidity:30,max_humidity:80});
-  D('binary_sensor.bed_window','off',{friendly_name:'卧室门窗',device_class:'window'});
-  D('switch.kitchen_kettle','on',{friendly_name:'电热水壶'});
-  D('light.kitchen','off',{friendly_name:'厨房灯带',supported_color_modes:['onoff']});
-  D('sensor.kitchen_temp','24.1',{friendly_name:'厨房温度',device_class:'temperature',unit_of_measurement:'°C'});
-  D('binary_sensor.kitchen_smoke','off',{friendly_name:'烟雾报警器',device_class:'smoke'});
-  D('light.study_desk','on',{friendly_name:'书房台灯',brightness:230,supported_color_modes:['color_temp','hs'],color_temp_kelvin:5600,min_color_temp_kelvin:2700,max_color_temp_kelvin:6500});
-  D('switch.study_pc','on',{friendly_name:'工位电脑'});
-  D('sensor.study_co2','620',{friendly_name:'二氧化碳',device_class:'carbon_dioxide',unit_of_measurement:'ppm'});
-  D('vacuum.rock','docked',{friendly_name:'扫拖机器人'});
-  D('lock.front_door','locked',{friendly_name:'入户门锁'});
-  D('scene.movie','scening',{friendly_name:'观影模式'});
-  D('scene.sleep','scening',{friendly_name:'睡眠模式'});
-  D('scene.reading','scening',{friendly_name:'阅读模式'});
-  D('scene.away','scening',{friendly_name:'离家模式'});
-  D('automation.morning','on',{friendly_name:'早晨唤醒'});
-  D('automation.night','on',{friendly_name:'晚安巡检'});
-  D('script.go_home','off',{friendly_name:'回家模式'});
-  [['living',['weather.home','light.living_main','light.living_strip','switch.living_tv','media_player.living_tv','cover.living_curtain','sensor.living_temp','sensor.living_hum','fan.living']],
-   ['bed',['light.bed_main','light.bed_side','climate.bed_ac','humidifier.bed','binary_sensor.bed_window']],
-   ['kitchen',['switch.kitchen_kettle','light.kitchen','sensor.kitchen_temp','binary_sensor.kitchen_smoke']],
-   ['study',['light.study_desk','switch.study_pc','sensor.study_co2','vacuum.rock','lock.front_door']],
-   ['',['scene.movie','scene.sleep','scene.reading','scene.away','automation.morning','automation.night','script.go_home']]
-  ].forEach(([a,list])=>list.forEach(eid=>entArea.set(eid,a)));
-  connState='demo';
-}
-
-/* ================= Home Assistant WebSocket 客户端 ================= */
-const WS={
-  sock:null,nid:0,pending:new Map(),authed:false,manual:false,
-  normUrl(u){
-    u=(u||'').trim().replace(/\/+$/,'');
-    if(u&&!/^https?:\/\//.test(u))u='http://'+u;
-    return u;
-  },
-  connect(){
-    const url=WS.normUrl(settings.url),token=(settings.token||'').trim();
-    if(!url||!token)return Promise.reject(new Error('请先填写服务器地址与令牌'));
-    connState='wait';paintStatus();
-    return new Promise((res,rej)=>{
-      let settled=false;
-      let sock;
-      try{sock=new WebSocket(url.replace(/^http/,'ws')+'/api/websocket');}
-      catch(err){connState='fail';paintStatus();rej(err);return;}
-      WS.sock=sock;
-      const fail=msg=>{if(!settled){settled=true;connState='fail';paintStatus();try{sock.close()}catch{}rej(new Error(msg));}};
-      const timer=setTimeout(()=>fail('连接超时'),8000);
-      sock.onmessage=ev=>{
-        let m;try{m=JSON.parse(ev.data)}catch{return;}
-        if(m.type==='auth_required'){sock.send(JSON.stringify({type:'auth',access_token:token}));return;}
-        if(m.type==='auth_ok'){clearTimeout(timer);WS.authed=true;settled=true;res();return;}
-        if(m.type==='auth_invalid'){clearTimeout(timer);fail('令牌无效，请在 HA 个人资料页重新创建');return;}
-        if(m.type==='result'){const p=WS.pending.get(m.id);if(p){WS.pending.delete(m.id);m.success?p.res(m.result):p.rej(new Error(m.error&&m.error.message||'调用失败'));}return;}
-        if(m.type==='event'){handleEvent(m.event);return;}
-      };
-      sock.onclose=()=>{
-        if(WS.authed){
-          WS.authed=false;connState='off';paintStatus();
-          if(!WS.manual){toast('连接已断开，5 秒后自动重连','err');setTimeout(()=>{if(!WS.manual&&settings.token)WS.connect().catch(()=>{});},5000);}
-        }else fail('无法连接到服务器');
-      };
-      sock.onerror=()=>{};
-    }).then(async()=>{
-      connState='on';paintStatus();
-      const states=await WS.call('get_states');
-      ents.clear();
-      states.forEach(s=>{if(s.state!=='removed')ents.set(s.entity_id,norm(s));});
-      applyWhitelist();
-      await WS.call('subscribe_events',{event_type:'state_changed'});
-      demo=false;
-      loadRegistry();
-      renderAll();
-      return true;
-    });
-  },
-  call(type,extra){
-    if(!WS.authed)return Promise.reject(new Error('未连接'));
-    return new Promise((res,rej)=>{
-      const id=++WS.nid;
-      WS.pending.set(id,{res,rej});
-      WS.sock.send(JSON.stringify({id,type,...extra}));
-    });
-  },
-  service(domain,service,eid,data){
-    return WS.call('call_service',{domain,service,target:{entity_id:eid},return_response:false,...(data?{service_data:data}:{})});
-  },
-  disconnect(){
-    WS.manual=true;
-    if(WS.sock)try{WS.sock.close()}catch{}
-    WS.authed=false;connState='off';paintStatus();
-  }
-};
-async function loadRegistry(){
-  try{
-    const ar=await WS.call('config/area_registry/list');
-    areas.clear();ar.forEach(a=>areas.set(a.area_id,a.name));
-    const er=await WS.call('config/entity_registry/list');
-    entArea.clear();er.forEach(x=>{if(x.area_id)entArea.set(x.entity_id,x.area_id);});
-    if(tab==='home'||tab==='devices')scheduleRender();
-  }catch(err){/* 令牌权限不足时按域分组 */}
-}
-function handleEvent(ev){
-  if(!ev||ev.event_type!=='state_changed')return;
-  const {entity_id,new_state}=ev.data||{};
-  if(WHITE_LIST.size&&!demo&&!WHITE_LIST.has(entity_id)&&entity_id.split('.')[0]!=='weather')return;
-  if(!new_state){ents.delete(entity_id);}else{ents.set(entity_id,norm(new_state));}
-  updateEntity(entity_id);
-  if(tab!=='devices')scheduleRender();
-}
-/* ================= 卡片渲染 ================= */
-const RGBS=[['255,82,82','#ff5252','红'],['255,152,0','#ff9800','橙'],['255,221,85','#ffdd55','黄'],['102,224,102','#66e066','绿'],['77,208,225','#4dd0e1','青'],['83,109,254','#536dfe','蓝'],['179,136,255','#b388ff','紫'],['255,128,171','#ff80ab','粉'],['255,255,255','#ffffff','白']];
-const HVAC={off:'关闭',heat:'制热',cool:'制冷',heat_cool:'智能',auto:'自动',dry:'除湿',fan_only:'送风'};
-const dlabel=d=>(DOMAINS[d]||DOMAINS._).t;
-const cssEsc=s=>(window.CSS&&CSS.escape)?CSS.escape(s):s.replace(/"/g,'\\"');
-
-function hasBrightness(e){
-  const a=e.attributes,modes=a.supported_color_modes;
-  if(modes&&modes.length)return !modes.every(x=>x==='onoff');
-  return a.brightness!=null;
-}
-function hasKelvin(e){const a=e.attributes,modes=a.supported_color_modes;return modes?modes.includes('color_temp'):(a.color_temp_kelvin!=null);}
-function hasColor(e){const a=e.attributes,modes=a.supported_color_modes;return !!modes&&modes.some(x=>['hs','rgb','rgbw','rgbww','rgbwvd','xy'].includes(x));}
-function hasMore(e){
-  const d=e.domain,a=e.attributes;
-  if(d==='light')return hasBrightness(e)||hasKelvin(e)||hasColor(e);
-  if(d==='climate')return (a.hvac_modes||[]).length>1;
-  if(d==='cover')return a.current_position!=null;
-  if(d==='fan')return a.percentage!=null;
-  if(d==='humidifier')return true;
-  if(d==='media_player')return a.volume_level!=null||a.media_title;
-  return false;
-}
-function slider(eid,key,min,max,val,step){
-  const pct=max>min?((val-min)/(max-min)*100):0;
-  return `<input type="range" class="rng" data-slider="${key}" data-eid="${esc(eid)}" min="${min}" max="${max}" step="${step}" value="${val}" style="--fill:${pct}%" aria-label="${key}">`;
-}
-function row(label,inp,valText){
-  return `<div class="ctl"><div class="ctl-head"><span>${label}</span><b data-val>${valText}</b></div>${inp}</div>`;
-}
-function moreHTML(e){
-  const d=e.domain,a=e.attributes,eid=e.entity_id;const parts=[];
-  if(d==='light'){
-    if(hasBrightness(e)){
-      const pct=a.brightness!=null?Math.round(a.brightness/255*100):(e.state==='on'?100:0);
-      parts.push(row('亮度',slider(eid,'brightness_pct',1,100,pct,1),pct+'%'));
-    }
-    if(hasKelvin(e)){
-      const min=a.min_color_temp_kelvin||2000,max=a.max_color_temp_kelvin||6500;
-      const v=a.color_temp_kelvin||Math.round((min+max)/2);
-      parts.push(row('色温',slider(eid,'kelvin',min,max,v,10),v+'K'));
-    }
-    if(hasColor(e)){
-      const cur=Array.isArray(a.rgb_color)?a.rgb_color.join(','):null;
-      parts.push(`<div><div class="ctl-head" style="margin-bottom:8px"><span>色彩</span></div><div class="swrow">${RGBS.map(c=>`<div class="sw-dot ${cur===c[0]?'sel':''}" style="background:${c[1]}" data-act="rgb" data-eid="${eid}" data-rgb="${c[0]}" title="${c[2]}"></div>`).join('')}</div></div>`);
-    }
-  }
-  if(d==='climate'&&a.hvac_modes){
-    parts.push(`<div><div class="ctl-head" style="margin-bottom:8px"><span>模式</span></div><div class="chiprow">${a.hvac_modes.map(x=>`<button class="chip ${x===e.state?'active':''}" data-act="hvac" data-eid="${eid}" data-mode="${x}">${HVAC[x]||x}</button>`).join('')}</div></div>`);
-  }
-  if(d==='cover'&&a.current_position!=null)
-    parts.push(row('开合度',slider(eid,'position',0,100,Math.round(a.current_position),1),Math.round(a.current_position)+'%'));
-  if(d==='fan'&&a.percentage!=null)
-    parts.push(row('风速',slider(eid,'pct',0,100,Math.round(a.percentage),1),Math.round(a.percentage)+'%'));
-  if(d==='humidifier'){
-    const min=a.min_humidity??30,max=a.max_humidity??80,v=a.humidity??((min+max)/2);
-    parts.push(row('目标湿度',slider(eid,'humidity',min,max,Math.round(v),1),Math.round(v)+'%'));
-  }
-  if(d==='media_player'){
-    if(a.media_title)parts.push(`<div style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.media_title)}</div>${a.media_artist?`<div style="font-size:12px;color:var(--text2);font-weight:600">${esc(a.media_artist)}</div>`:''}`);
-    if(a.volume_level!=null)parts.push(row('音量',slider(eid,'volume',0,1,Math.round(a.volume_level*100)/100,0.01),Math.round(a.volume_level*100)+'%'));
-  }
-  return parts.join('');
-}
-function controlsHTML(e){
-  const d=e.domain,m=dmeta(e),on=isOn(e),eid=e.entity_id,a=e.attributes;
-  if(m.tg)return `<div class="c-foot"><span style="font-size:12.5px;color:var(--muted);font-weight:600">${dlabel(d)}</span><button class="tgl" data-act="toggle" data-eid="${eid}" role="switch" aria-checked="${on}" aria-label="开关"></button></div>`;
-  if(d==='climate'){
-    const t=a.temperature!=null?a.temperature:'--';
-    return `<div class="c-foot"><div class="temp">${t}°</div><div style="display:flex;gap:8px">
-      <button class="ib" data-act="tstep" data-eid="${eid}" data-dir="-1" title="降温">${icon('minus',16)}</button>
-      <button class="ib" data-act="tstep" data-eid="${eid}" data-dir="1" title="升温">${icon('plus',16)}</button></div></div>`;
-  }
-  if(d==='cover')return `<div class="c-foot btns">
-      <button class="ib" data-act="cov" data-eid="${eid}" data-s="open_cover" title="打开">${icon('chevU',17)}</button>
-      <button class="ib" data-act="cov" data-eid="${eid}" data-s="stop_cover" title="停止">${icon('stop',15)}</button>
-      <button class="ib" data-act="cov" data-eid="${eid}" data-s="close_cover" title="关闭">${icon('chevD',17)}</button></div>`;
-  if(d==='media_player'){
-    const playing=e.state==='playing';
-    return `<div class="c-foot btns">
-      <button class="ib" data-act="call" data-eid="${eid}" data-d="media_player" data-s="media_previous_track" title="上一曲">${icon('prev',16)}</button>
-      <button class="ib accent" data-act="call" data-eid="${eid}" data-d="media_player" data-s="media_play_pause" title="播放/暂停">${icon(playing?'pause':'play',17)}</button>
-      <button class="ib" data-act="call" data-eid="${eid}" data-d="media_player" data-s="media_next_track" title="下一曲">${icon('next',16)}</button></div>`;
-  }
-  if(d==='lock'){
-    const locked=e.state==='locked';
-    return `<div class="c-foot btns">
-      <button class="ib ${locked?'accent':''}" data-act="lock" data-eid="${eid}" title="上锁">${icon('lock',17)}</button>
-      <button class="ib ${locked?'':'accent'}" data-act="unlock" data-eid="${eid}" title="开锁">${icon('unlock',17)}</button></div>`;
-  }
-  if(d==='scene')return `<div class="c-foot"><button class="btn sm" data-act="call" data-eid="${eid}" data-d="scene" data-s="turn_on">${icon('spark',15)} 执行</button></div>`;
-  if(d==='script')return `<div class="c-foot"><button class="btn sm" data-act="call" data-eid="${eid}" data-d="script" data-s="turn_on">${icon('play',15)} 运行</button></div>`;
-  if(d==='automation')return `<div class="c-foot"><button class="ib" data-act="call" data-eid="${eid}" data-d="automation" data-s="trigger" title="立即触发">${icon('play',16)}</button><button class="tgl" data-act="toggle" data-eid="${eid}" role="switch" aria-checked="${on}"></button></div>`;
-  if(d==='vacuum')return `<div class="c-foot btns">
-      <button class="ib accent" data-act="call" data-eid="${eid}" data-d="vacuum" data-s="start" title="开始清扫">${icon('play',16)}</button>
-      <button class="ib" data-act="call" data-eid="${eid}" data-d="vacuum" data-s="return_to_base" title="回充">${icon('home',17)}</button></div>`;
-  if(d==='sensor')return `<div class="c-val"><b>${esc(e.state)}</b><span>${esc(a.unit_of_measurement||'')}</span></div>`;
-  if(d==='binary_sensor')return `<span class="badge">${stateLabel(e)}</span>`;
-  if(d==='weather')return `<div class="c-val"><b>${a.temperature??'--'}</b><span>${esc(a.temperature_unit||'°C')} · 湿度 ${a.humidity??'--'}%</span></div>`;
-  return `<div class="c-foot"><span class="badge">${stateLabel(e)}</span></div>`;
-}
-function cardHTML(e,opts={}){
-  const on=isOn(e),na=e.state==='unavailable'||e.state==='unknown';
-  const tc=tileColor(e),fav=favs.has(e.entity_id),exp=hasMore(e);
-  return `<article class="card ${on?'on':''} ${na?'na':''}" data-card="${esc(e.entity_id)}" style="--tg:${tc}" ${exp?'data-exp="1"':''}>
-    <div class="fx">${fxHTML(e)}</div>
-    <div class="card-top">
-      <div class="tile ${on?'on':''}">${icon(entIcon(e),23)}</div>
-      <div class="c-info"><div class="c-name">${esc(e.name)}</div><div class="c-state ${on?'on':''}">${stateLabel(e)}${opts.room?` · ${esc(roomName(e.entity_id))}`:''}</div></div>
-      <button class="fav ${fav?'act':''}" data-act="fav" data-eid="${esc(e.entity_id)}" title="收藏">${icon('star',17)}</button>
-    </div>
-    ${controlsHTML(e)}
-    ${exp?`<div class="c-more"><div><div class="c-more-in">${moreHTML(e)}</div></div></div>`:''}
-  </article>`;
-}
-function updateEntity(eid){
-  const e=ent(eid);
-  document.querySelectorAll(`[data-card="${cssEsc(eid)}"]`).forEach(n=>{
-    if(!e){n.remove();return;}
-    if(n.dataset.drag)return;
-    const open=n.classList.contains('open'),room=n.dataset.ctx==='fav';
-    const isBt=n.classList.contains('bt');
-    const w=document.createElement('div');w.innerHTML=isBt?btHTML(e):cardHTML(e,{room});
-    const el=w.firstElementChild;if(open&&el.classList)el.classList.add('open');
-    n.replaceWith(el);
-  });
-}
-
-/* ================= Bento 磁贴（首页房间区） ================= */
-function btHTML(e){
-  const on=isOn(e),na=e.state==='unavailable'||e.state==='unknown';
-  const tc=tileColor(e),d=e.domain,a=e.attributes;
-  const head=`<div class="bt-ic">${icon(entIcon(e),19)}</div><div class="bt-name">${esc(e.name)}</div>`;
-  let mid='';
-  if(d==='climate'){
-    const cur=a.current_temperature!=null?a.current_temperature:a.temperature;
-    const tgt=a.temperature!=null?a.temperature:cur;
-    mid=`<div class="bt-temp">${on&&tgt!=null?Math.round(tgt)+'°':(cur!=null?Math.round(cur)+'°':'--')}</div>
-    <div class="bt-st">${stateLabel(e)}</div>
-    <div class="bt-step"><button data-act="tstep" data-eid="${esc(e.entity_id)}" data-dir="-1">−</button><button data-act="tstep" data-eid="${esc(e.entity_id)}" data-dir="1">+</button></div>`;
-    return `<div class="bt bt-cl ${on?'on':''} ${na?'na':''}" data-card="${esc(e.entity_id)}" data-act="toggle" data-eid="${esc(e.entity_id)}" style="--tg:${tc}"><div class="fx">${fxHTML(e)}</div>${head}${mid}</div>`;
-  }
-  if(d==='light'&&on||d==='fan'&&on||d==='cover'){
-    let pct=0,key='',lab='';
-    if(d==='light'){pct=Math.round((a.brightness??128)/2.55);key='bri';lab=pct+'%';}
-    else if(d==='fan'){pct=a.percentage??50;key='fan';lab=pct+'%';}
-    else{pct=a.current_position??a.current_cover_position??(on?100:0);key='cov';lab=pct+'%';}
-    mid=`<div class="vsl" data-vsl="${key}" data-eid="${esc(e.entity_id)}"><div class="vsl-fill" style="height:${on||d==='cover'?pct:0}%"></div><div class="vsl-lab">${on||d==='cover'?lab:'关'}</div></div>`;
-    return `<div class="bt ${on?'on':''} ${na?'na':''}" data-card="${esc(e.entity_id)}" style="--tg:${tc}"><div class="fx">${fxHTML(e)}</div>${head}${mid}</div>`;
-  }
-  const tg=(DOMAINS[d]||{}).tg||['switch','light','input_boolean','lock'].includes(d);
-  return `<div class="bt ${on?'on':''} ${na?'na':''}" data-card="${esc(e.entity_id)}" ${tg?`data-act="toggle" data-eid="${esc(e.entity_id)}"`:''} style="--tg:${tc}"><div class="fx">${fxHTML(e)}</div>${head}<div class="bt-st">${stateLabel(e)}</div></div>`;
-}
-
-/* ================= 状态特效 ================= */
-function fxHTML(e){
-  const d=e.domain,on=isOn(e);
-  if(!on)return '';
-  if(d==='light'||d==='switch'||d==='input_boolean'){
-    return `<div class="fx-light"></div>`;
-  }
-  if(d==='fan'){
-    return `<div class="fx-fan"><svg class="fan-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-3 2-5 5-5s3 2 3 3-2 2-5 2"/><path d="M12 12c3 0 5 2 5 5s-2 3-3 3-2-2-2-5"/><path d="M12 12c-3 0-5-2-5-5s2-3 3-3 2 2 2 5"/><path d="M12 12c0 3-2 5-5 5s-3-2-3-3 2-2 5-2"/><circle cx="12" cy="12" r="1.2"/></svg><i></i><i></i><i></i></div>`;
-  }
-  if(d==='climate'){
-    const mode=e.state==='cool'?'snow':e.state==='heat'?'heat':'';
-    if(!mode)return '';
-    return `<div class="fx-${mode}"><i></i><i></i><i></i><i></i><i></i></div>`;
-  }
-  if(d==='cover'){
-    const a=e.attributes;
-    let pos=a.current_position??a.current_cover_position??50;
-    const max=34;
-    const inset=8+((100-pos)/100)*max;
-    return `<div class="fx-curtain" style="left:${inset}%"></div>`;
-  }
-  return '';
-}
-
-/* ================= 页面渲染 ================= */
-const V=$('#view');
-const NAVS=[['home','home','首页'],['devices','grid','设备'],['scenes','spark','场景'],['settings','sliders','设置']];
-function renderNav(){
-  $('#sideNav').innerHTML=NAVS.map(([t,i,l])=>`<button class="nav-item ${tab===t?'active':''}" data-act="tab" data-tab="${t}">${icon(i,20)}<span>${l}</span></button>`).join('');
-  $('#bottomnav').innerHTML=NAVS.map(([t,i,l])=>`<button class="bn-item ${tab===t?'active':''}" data-act="tab" data-tab="${t}">${icon(i,21)}<span>${l}</span></button>`).join('');
-}
-function setTab(t){tab=t;renderView();renderNav();window.scrollTo({top:0,behavior:'smooth'});}
-function renderView(){
-  const h=new Date().getHours();
-  $('#greeting').textContent=h<6?'夜深了':h<11?'早上好':h<13?'中午好':h<18?'下午好':'晚上好';
-  $('#dateStr').textContent=new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
-  if(tab==='home')renderHome();else if(tab==='devices')renderDevices();else if(tab==='scenes')renderScenes();else renderSettings();
-}
-let renderT;
-function scheduleRender(){clearTimeout(renderT);renderT=setTimeout(renderView,140);}
-function renderAll(){renderNav();renderView();paintStatus();}
-
-const hchip=(ic,n,label,d)=>`<button class="hchip" data-act="hfilter" data-d="${d}" title="查看${label}">${icon(ic,15)}<b>${n}</b><span style="opacity:.8">${label}</span></button>`;
-function renderHome(){
-  const list=[...ents.values()];
-  const w=list.find(e=>e.domain==='weather');
-  const lightsOn=list.filter(e=>e.domain==='light'&&isOn(e)).length;
-  const swOn=list.filter(e=>['switch','input_boolean'].includes(e.domain)&&isOn(e)).length;
-  const clim=list.filter(e=>e.domain==='climate'&&e.state!=='off').length;
-  const play=list.filter(e=>e.domain==='media_player'&&e.state==='playing').length;
-  const chips=`<div class="hero-chips">${hchip('light',lightsOn,'灯光开启','light')}${hchip('climate',clim,'温控运行','climate')}${hchip('switch',swOn,'开关打开','switch')}${hchip('media',play,'播放中','media_player')}</div>`;
-  let hero;
-  if(w){
-    const a=w.attributes,c=COND[w.state]||[w.state,'cloud'];
-    hero=`<section class="hero"><div class="hero-row">
-      <div><div class="hero-k">室外 · ${esc(c[0])}</div>
-      <div class="hero-temp">${a.temperature??'--'}<span>${esc(a.temperature_unit||'°C')}</span></div>
-      <div class="hero-meta">湿度 ${a.humidity??'--'}%${a.wind_speed!=null?` · 风速 ${a.wind_speed} ${esc(a.wind_speed_unit||'km/h')}`:''}</div></div>
-      <div class="hero-ic">${icon(c[1],84)}</div></div>${chips}</section>`;
-  }else{
-    const active=list.filter(isOn).length;
-    hero=`<section class="hero"><div class="hero-row">
-      <div><div class="hero-k">设备概览</div>
-      <div class="hero-temp">${active}<span>/ ${list.length}</span></div>
-      <div class="hero-meta">当前活跃设备</div></div>
-      <div class="hero-ic">${icon('home',84)}</div></div>${chips}</section>`;
-  }
-  const banner=demo?`<div class="banner"><div class="b-ic">${icon('info',20)}</div><p><b>正在浏览演示数据</b>连接你的 Home Assistant 即可控制真实设备</p><button class="btn sm" data-act="goto-settings">立即连接</button></div>`:'';
-  const favList=[...favs].map(ent).filter(Boolean);
-  const favSec=favList.length?`<section><div class="sec-head"><h2>收藏</h2><span class="cnt">${favList.length}</span></div><div class="grid">${favList.map(e=>{const h=cardHTML(e,{room:1});return h.replace('data-card=','data-ctx="fav" data-card=');}).join('')}</div></section>`:'';
-  const rooms=new Map();
-  list.forEach(e=>{const r=roomName(e.entity_id);if(!rooms.has(r))rooms.set(r,[]);rooms.get(r).push(e);});
-  rooms.delete('未分组');
-  let roomSec='';
-  if(USER_ROOMS.length&&!demo){
-    roomSec=USER_ROOMS.map(r=>{
-      const items=r.items.map(it=>ent(it.id)).filter(Boolean);
-      if(!items.length)return '';
-      const onAny=items.some(e=>(DOMAINS[e.domain]||{}).tg&&e.domain!=='automation'&&isOn(e));
-      return `<section><div class="sec-head"><h2>${esc(r.name)}</h2><span class="cnt">${items.length}</span>${onAny?`<button class="sec-more" data-act="goff" data-room="${esc(r.name)}">${icon('power',13)} 全部关闭</button>`:''}</div><div class="bento">${items.map(e=>btHTML(e)).join('')}</div></section>`;
-    }).join('');
-  }else if(rooms.size){
-    const cards=[...rooms.entries()].map(([r,rl])=>{
-      const ls=rl.filter(e=>e.domain==='light');
-      const lOn=ls.filter(isOn).length;
-      const ts=rl.find(e=>e.domain==='sensor'&&e.attributes.device_class==='temperature');
-      const temp=ts?esc(ts.state)+'°':'';
-      let areaId='__none__';
-      for(const [eid2,a2] of entArea){if(areas.get(a2)===r){areaId=a2;break;}}
-      return `<article class="room" data-act="room" data-area="${esc(areaId)}">
-        <div class="room-top"><div class="room-ic">${icon('home',21)}</div>${temp?`<div class="room-t">${temp}<small>C</small></div>`:''}</div>
-        <div class="room-name">${esc(r)}</div>
-        <div class="room-sub">${rl.length} 个设备${ls.length?` · ${lOn} 灯亮`:''}</div></article>`;
-    }).join('');
-    roomSec=`<section><div class="sec-head"><h2>房间</h2><span class="cnt">${rooms.size}</span></div><div class="grid rooms">${cards}</div></section>`;
-  }
-  const scenes=list.filter(e=>e.domain==='scene');
-  const scSec=scenes.length?`<section><div class="sec-head"><h2>场景</h2><button class="sec-more" data-act="tab" data-tab="scenes">查看全部</button></div><div class="scrow">${scenes.map((e,i)=>`<button class="scard" data-act="call" data-eid="${e.entity_id}" data-d="scene" data-s="turn_on"><div class="stile" style="filter:hue-rotate(${i*47}deg)">${icon('spark',20)}</div><div class="sname">${esc(e.name)}</div><div class="ssub">轻点执行</div></button>`).join('')}</div></section>`:'';
-  V.innerHTML=hero+banner+favSec+roomSec+scSec+'<div class="list-tail"></div>';
-}
-
-function renderDevices(){
-  const list=[...ents.values()].filter(e=>e.domain!=='weather');
-  const hasUngrouped=list.some(e=>!entArea.get(e.entity_id));
-  const areaIds=['all',...areas.keys(),...(hasUngrouped?['__none__']:[])];
-  const areaChips=areaIds.map(id=>`<button class="chip ${areaFilter===id?'active':''}" data-act="afilter" data-id="${esc(id)}">${id==='all'?'全部区域':id==='__none__'?'未分组':esc(areas.get(id))}</button>`).join('');
-  const domCount=new Map();
-  list.forEach(e=>domCount.set(e.domain,(domCount.get(e.domain)||0)+1));
-  const domChips=[`<button class="chip ${domFilter==='all'?'active':''}" data-act="dfilter" data-id="all">全部类型</button>`,
-    ...[...domCount.entries()].filter(([d])=>DOMAINS[d]).sort((a,b)=>b[1]-a[1]).map(([d])=>`<button class="chip ${domFilter===d?'active':''}" data-act="dfilter" data-id="${d}">${dlabel(d)}</button>`)].join('');
-  const qc=query;
-  const filtered=list.filter(e=>{
-    if(qc&&!e.name.toLowerCase().includes(qc)&&!e.entity_id.includes(qc)
-      &&!roomName(e.entity_id).toLowerCase().includes(qc)&&!dlabel(e.domain).includes(qc))return false;
-    if(domFilter!=='all'&&e.domain!==domFilter)return false;
-    if(areaFilter==='__none__'){if(entArea.get(e.entity_id))return false;}
-    else if(areaFilter!=='all'&&entArea.get(e.entity_id)!==areaFilter)return false;
-    return true;
-  });
-  const top=`<section><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none">${areaChips}</div><div class="chiprow" style="margin-top:8px">${domChips}</div></section>`;
-  filtered.sort((a,b)=>(CFG_ORDER[a.entity_id]??9e3)-(CFG_ORDER[b.entity_id]??9e3));
-  let body='';
-  if(!filtered.length)body=`<section class="empty">${icon('search',36)}<p>${qc?`没有匹配「${esc(query)}」的设备`:'这里空空如也'}</p></section>`;
-  else if(qc||areaFilter!=='all'||domFilter!=='all'){
-    const title=qc?'搜索结果':(areaFilter!=='all'?(areaFilter==='__none__'?'未分组':areas.get(areaFilter)):dlabel(domFilter));
-    body=`<section><div class="sec-head"><h2>${esc(title)}</h2><span class="cnt">${filtered.length}</span></div><div class="grid">${filtered.map(e=>cardHTML(e)).join('')}</div></section>`;
-  }else{
-    const groups=new Map();
-    filtered.forEach(e=>{const r=roomName(e.entity_id);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(e);});
-    const names=[...groups.keys()].sort((a,b)=>(a==='未分组')-(b==='未分组'));
-    body=names.map(n=>{const g=groups.get(n);
-      const onAny=g.some(e=>(DOMAINS[e.domain]||{}).tg&&e.domain!=='automation'&&isOn(e));
-      return `<section><div class="sec-head"><h2>${esc(n)}</h2><span class="cnt">${g.length}</span>${onAny?`<button class="sec-more" data-act="goff" data-room="${esc(n)}">${icon('power',13)} 全部关闭</button>`:''}</div><div class="grid">${g.map(e=>cardHTML(e)).join('')}</div></section>`;}).join('');
-  }
-  V.innerHTML=top+body+'<div class="list-tail"></div>';
-}
-
-function renderScenes(){
-  const list=[...ents.values()];
-  const sec=(t,arr)=>arr.length?`<section><div class="sec-head"><h2>${t}</h2><span class="cnt">${arr.length}</span></div><div class="grid">${arr.map(e=>cardHTML(e)).join('')}</div></section>`:'';
-  const html=sec('场景',list.filter(e=>e.domain==='scene'))+sec('脚本',list.filter(e=>e.domain==='script'))+sec('自动化',list.filter(e=>e.domain==='automation'));
-  V.innerHTML=(html||`<section class="empty">${icon('spark',36)}<p>没有可用的场景、脚本或自动化</p></section>`)+'<div class="list-tail"></div>';
-}
-
-function renderSettings(){
-  const t=curTheme();
-  const st=connState==='on'?'已连接':connState==='wait'?'连接中…':connState==='fail'?'连接失败':demo?'演示模式':'未连接';
-  V.innerHTML=`
-  <section class="panel">
-    <div class="sec-head"><h2>Home Assistant 连接</h2><span class="cnt">${st}</span></div>
-    <div class="frow"><label>服务器地址</label><input id="haUrl" class="input" value="${esc(settings.url)}" placeholder="http://192.168.0.141:8123"></div>
-    <div class="frow"><label>长期访问令牌 Long-Lived Token</label><input id="haToken" class="input" type="password" value="${esc(settings.token)}" placeholder="粘贴访问令牌"></div>
-    <div class="btnrow">
-      <button class="btn" data-act="connect">${icon('power',16)} 连接</button>
-      <button class="btn ghost" data-act="disconnect">断开</button>
-      <button class="btn ghost" data-act="demo">${icon('cpu',16)} 演示数据</button>
-    </div>
-    <details class="help"><summary>如何获取令牌？</summary>
-      <ol><li>浏览器打开 Home Assistant，点击左下角你的头像进入个人资料页</li><li>切换到「安全」选项卡，拉到最下方「长期访问令牌」</li><li>点击「创建令牌」，命名后复制生成的密钥（只显示一次）</li><li>粘贴到上方输入框，点击「连接」</li></ol>
-    </details>
-  </section>
-  <section class="panel">
-    <div class="sec-head"><h2>布局</h2></div>
-    <div class="btnrow">
-      ${['compact','normal','large'].map(d=>`<button class="chip ${settings.density===d?'active':''}" data-act="density" data-d="${d}">${d==='compact'?'紧凑':d==='normal'?'标准':'大卡片'}</button>`).join('')}
-    </div>
-  </section>
-  <section class="panel">
-    <div class="sec-head"><h2>外观</h2><span class="cnt">${THEMES.length} 款主题 · 当前 ${esc(t.n)}</span></div>
-    <div class="tcats" id="setCats"></div><div class="tgrid" id="setGrid"></div>
-  </section>
-  <section class="panel about">
-    <div class="sec-head"><h2>关于</h2></div>
-    <p><b>Lumen</b> — 单文件智能家居面板，直连 Home Assistant WebSocket API，实时同步设备状态。所有数据仅保存在浏览器本地。</p>
-    <p>推荐将本文件放入 HA 的 <b>/config/www/</b> 目录，通过 <b>http://192.168.0.141:8123/local/index.html</b> 访问（同源免配置）。</p>
-    <p>本地双击打开亦可使用（WebSocket 不受跨域限制）。注意：若本页面以 https 打开而 HA 为 http，浏览器会拦截混合内容。</p>
-  </section>`;
-  renderThemeUI();
-}
-
-/* ================= 主题选择 UI ================= */
-const CATS=['全部','深色','浅色','经典','自然','特色'];
-const curTheme=()=>THEMES.find(t=>t.id===settings.themeId)||THEMES[0];
-function themeGridHTML(){
-  return THEMES.filter(t=>themeCat==='全部'||t.c===themeCat).map(t=>{const v=t.v;
-    return `<button class="sw ${settings.themeId===t.id?'active':''}" data-act="theme" data-theme="${t.id}">
-      <div class="sw-prev" style="--sw-bg:${v[0]};--sw-sf:${v[1]};--sw-ac:${v[7]};--sw-g1:${v[10]}"><div class="sw-card"></div><div class="sw-dotm"></div></div>
-      <div class="sw-name">${esc(t.n)}</div></button>`;}).join('');
-}
-function renderThemeUI(){
-  const cats=CATS.map(c=>`<button class="chip ${themeCat===c?'active':''}" data-act="tcat" data-cat="${c}">${c}</button>`).join('');
-  const g=themeGridHTML();
-  const sc=$('#sheetCats'),sg=$('#sheetGrid'),cc=$('#setCats'),cg=$('#setGrid');
-  if(sc){sc.innerHTML=cats;sg.innerHTML=g;}
-  if(cc){cc.innerHTML=cats;cg.innerHTML=g;}
-}
-function openSheet(){renderThemeUI();$('#themeSheet').classList.add('show');}
-function closeSheet(){$('#themeSheet').classList.remove('show');}
-
-/* ================= 状态指示 / Toast ================= */
-function paintStatus(){
-  const d=$('#statusDot');
-  d.className='dot '+(connState==='on'?'on':connState==='wait'?'wait':demo?'demo':'off');
-  const txt=connState==='on'?'已连接 · '+WS.normUrl(settings.url).replace(/^https?:\/\//,''):connState==='wait'?'连接中…':connState==='fail'?'连接失败':demo?'演示模式':'未连接';
-  $('#sideStatus').innerHTML=icon(connState==='on'?'wifi':demo?'cpu':'info',16)+'<span>'+esc(txt)+'</span>';
-}
-let toastT;
-function toast(msg,type){
-  const el=$('#toast');el.textContent=msg;el.className='toast show'+(type==='err'?' err':'');
-  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);
-}
-
-/* ================= 控制逻辑 ================= */
-function toggleEntity(eid){
-  const e=ent(eid);if(!e)return;
-  const svc=isOn(e)?'turn_off':'turn_on';
-  if(demo){applyDemoService(e.domain,svc,eid);return;}
-  WS.service(e.domain,svc,eid).catch(err=>toast('操作失败：'+err.message,'err'));
-}
-function toggleFav(eid){
-  favs.has(eid)?favs.delete(eid):favs.add(eid);
-  store.set('lumen.favs',[...favs]);
-  updateEntity(eid);if(tab==='home')scheduleRender();
-}
-const SLIDERS={
-  brightness_pct:{d:'light',s:'turn_on',k:'brightness_pct'},
-  kelvin:{d:'light',s:'turn_on',k:'color_temp_kelvin'},
-  pct:{d:'fan',s:'turn_on',k:'percentage'},
-  humidity:{d:'humidifier',s:'set_humidity',k:'humidity'},
-  position:{d:'cover',s:'set_cover_position',k:'position'},
-  volume:{d:'media_player',s:'volume_set',k:'volume_level'},
-};
-function sendSlider(eid,key,val){
-  const cfg=SLIDERS[key],e=ent(eid);if(!e||!cfg)return;
-  let service=cfg.s,data={[cfg.k]:val};
-  if((key==='brightness_pct'||key==='pct')&&val<=0){service='turn_off';data={};}
-  if(demo){applyDemoService(cfg.d,service,eid,data);return;}
-  WS.service(cfg.d,service,eid,data).catch(err=>toast('设置失败：'+err.message,'err'));
-}
-const slideTimers=new Map();
-/* ---- Bento 竖向滑块（pointer 拖拽） ---- */
-let vslAct=null;
-function vslFromEvent(t,ev){
-  const r=t.getBoundingClientRect();
-  const pct=clamp(Math.round((1-(ev.clientY-r.top)/r.height)*100),0,100);
-  return pct;
-}
-function vslPaint(t,pct){
-  const f=t.querySelector('.vsl-fill'),l=t.querySelector('.vsl-lab');
-  if(f)f.style.height=pct+'%';
-  if(l)l.textContent=pct<=0?'关':pct+'%';
-}
-document.addEventListener('pointerdown',ev=>{
-  const t=ev.target.closest('.vsl');if(!t)return;
-  ev.preventDefault();
-  const card=t.closest('.bt');if(card)card.dataset.drag='1';
-  vslAct={t,eid:t.dataset.eid,key:t.dataset.vsl};
-  vslPaint(t,vslFromEvent(t,ev));
-  try{t.setPointerCapture(ev.pointerId);}catch(_){/* ignore */}
-},{passive:false});
-document.addEventListener('pointermove',ev=>{
-  if(!vslAct)return;
-  const pct=vslFromEvent(vslAct.t,ev);
-  vslPaint(vslAct.t,pct);
-  clearTimeout(slideTimers.get('vsl'));
-  slideTimers.set('vsl',setTimeout(()=>vslCommit(vslAct),280));
-});
-document.addEventListener('pointerup',()=>{
-  if(!vslAct)return;
-  clearTimeout(slideTimers.get('vsl'));
-  vslCommit(vslAct);
-  const card=vslAct.t.closest('.bt');
-  if(card)setTimeout(()=>{delete card.dataset.drag;updateEntity(vslAct.eid);},600);
-  vslAct=null;
-});
-function vslCommit(a){
-  const pct=parseInt(a.t.querySelector('.vsl-fill').style.height)||0;
-  const map={bri:'brightness_pct',fan:'pct',cov:'position'};
-  sendSlider(a.eid,map[a.key],pct);
-}
-
-function valText(key,val){
-  if(key==='kelvin')return Math.round(val)+'K';
-  if(key==='volume')return Math.round(val*100)+'%';
-  return Math.round(val)+'%';
-}
-function onSliderInput(t){
-  const eid=t.dataset.eid,key=t.dataset.slider;
-  const min=+t.min,max=+t.max,val=+t.value;
-  t.style.setProperty('--fill',max>min?((val-min)/(max-min)*100)+'%':'0%');
-  const card=t.closest('.card');if(card)card.dataset.drag='1';
-  const lab=t.closest('.ctl')&&t.closest('.ctl').querySelector('[data-val]');
-  if(lab)lab.textContent=valText(key,val);
-  const tk=eid+':'+key;
-  clearTimeout(slideTimers.get(tk));
-  slideTimers.set(tk,setTimeout(()=>sendSlider(eid,key,val),320));
-}
-function onSliderChange(t){
-  const eid=t.dataset.eid,key=t.dataset.slider,tk=eid+':'+key;
-  clearTimeout(slideTimers.get(tk));
-  sendSlider(eid,key,+t.value);
-  const card=t.closest('.card');
-  if(card)setTimeout(()=>{delete card.dataset.drag;updateEntity(eid);},600);
-}
-function applyDemoService(domain,service,eid,data={}){
-  const e=ent(eid);if(!e)return;
-  const a=e.attributes;
-  const set=(id,st,attr)=>{const x=ent(id);if(!x)return;x.state=st;if(attr)Object.assign(x.attributes,attr);updateEntity(id);};
-  if(domain==='scene'){
-    if(eid==='scene.movie'){set('light.living_main','on');set('light.living_strip','on');set('cover.living_curtain','open',{current_position:70});}
-    else if(eid==='scene.sleep'){['light.living_main','light.living_strip','light.kitchen','light.study_desk'].forEach(x=>set(x,'off'));set('cover.living_curtain','closed',{current_position:0});}
-    else if(eid==='scene.reading')set('light.living_main','on',{brightness:180});
-    else if(eid==='scene.away')[...ents.values()].filter(x=>(DOMAINS[x.domain]||{}).tg).forEach(x=>set(x.entity_id,'off'));
-    toast('场景「'+e.name+'」已激活（演示）');
-  }
-  else if(domain==='script'||(domain==='automation'&&service==='trigger'))toast((domain==='script'?'脚本':'自动化')+'「'+e.name+'」已执行（演示）');
-  else if(service==='turn_on'){
-    e.state='on';
-    if(domain==='light'){if(data.brightness_pct!=null)a.brightness=Math.round(data.brightness_pct*2.55);if(data.color_temp_kelvin!=null)a.color_temp_kelvin=data.color_temp_kelvin;if(a.brightness==null)a.brightness=128;}
-    else if(domain==='fan'){if(data.percentage!=null)a.percentage=data.percentage;if(a.percentage==null)a.percentage=50;}
-  }
-  else if(service==='turn_off'){e.state='off';if(domain==='fan')a.percentage=0;}
-  else if(service==='volume_set')a.volume_level=data.volume_level;
-  else if(service==='set_temperature')a.temperature=data.temperature;
-  else if(service==='set_hvac_mode')e.state=data.hvac_mode;
-  else if(service==='set_cover_position'){a.current_position=data.position;e.state=data.position>0?'open':'closed';}
-  else if(service==='set_humidity')a.humidity=data.humidity;
-  else if(service==='set_percentage'){a.percentage=data.percentage;e.state=data.percentage>0?'on':'off';}
-  else if(service==='lock')e.state='locked';
-  else if(service==='unlock')e.state='unlocked';
-  else if(service==='open_cover')set(eid,'open');
-  else if(service==='close_cover')set(eid,'closed');
-  updateEntity(eid);
-  if(tab!=='devices')scheduleRender();
-}
-async function doConnect(){
-  settings.url=$('#haUrl')&&$('#haUrl').value.trim()||settings.url;
-  settings.token=$('#haToken')&&$('#haToken').value.trim()||'';
-  store.set('lumen.settings',settings);
-  if(!settings.token){toast('请先填写访问令牌','err');return;}
-  toast('正在连接 '+WS.normUrl(settings.url)+' …');
-  try{await WS.connect();toast('连接成功，已同步 '+ents.size+' 个实体');}
-  catch(err){toast('连接失败：'+err.message,'err');}
-}
-function enableDemo(){loadDemo();connState='demo';renderAll();}
-
-/* ================= 事件 ================= */
-const searchDeb=debounce(v=>{
-  query=v.trim().toLowerCase();
-  if(query&&tab!=='devices'){domFilter='all';areaFilter='all';setTab('devices');}
-  else renderView();
-},160);
-
-document.addEventListener('click',ev=>{
-  const card=ev.target.closest('.card');
-  if(card&&card.dataset.exp&&!ev.target.closest('button,input,[data-act]')){
-    card.classList.toggle('open');return;
-  }
-  const el=ev.target.closest('[data-act]');
-  if(!el)return;
-  const act=el.dataset.act,eid=el.dataset.eid,e=eid?ent(eid):null;
-  switch(act){
-    case 'tab':setTab(el.dataset.tab);break;
-    case 'palette':openSheet();break;
-    case 'closeSheet':closeSheet();break;
-    case 'tcat':themeCat=el.dataset.cat;renderThemeUI();break;
-    case 'density':{settings.density=el.dataset.d;applyDensity(settings.density);store.set('lumen.settings',settings);renderView();break;}
-    case 'theme':{const t=THEMES.find(x=>x.id===el.dataset.theme);if(t)applyTheme(t);break;}
-    case 'toggle':toggleEntity(eid);break;
-    case 'fav':toggleFav(eid);break;
-    case 'call':{
-      if(!e)break;const d=el.dataset.d||e.domain,s=el.dataset.s;
-      if(demo)applyDemoService(d,s,eid);
-      else WS.service(d,s,eid).then(()=>{if(['scene','script'].includes(d))toast('已执行「'+e.name+'」');}).catch(err=>toast('执行失败：'+err.message,'err'));
-      break;}
-    case 'tstep':{
-      if(!e)break;const a=e.attributes,step=a.target_temp_step||0.5;
-      const cur=a.temperature!=null?a.temperature:(a.min_temp||20);
-      const v=clamp(Math.round((cur+(+el.dataset.dir)*step)*10)/10,a.min_temp??7,a.max_temp??35);
-      if(demo)applyDemoService('climate','set_temperature',eid,{temperature:v});
-      else WS.service('climate','set_temperature',eid,{temperature:v}).catch(()=>toast('设置失败','err'));
-      break;}
-    case 'hvac':{
-      if(!e)break;
-      if(demo)applyDemoService('climate','set_hvac_mode',eid,{hvac_mode:el.dataset.mode});
-      else WS.service('climate','set_hvac_mode',eid,{hvac_mode:el.dataset.mode}).catch(()=>{});
-      break;}
-    case 'rgb':{
-      if(!e)break;const rgb=el.dataset.rgb.split(',').map(Number);
-      if(demo){e.attributes.rgb_color=rgb;updateEntity(eid);toast('已切换颜色（演示）');}
-      else WS.service('light','turn_on',eid,{rgb_color:rgb}).catch(()=>{});
-      break;}
-    case 'cov':{if(!e)break;demo?applyDemoService('cover',el.dataset.s,eid):WS.service('cover',el.dataset.s,eid).catch(()=>{});break;}
-    case 'lock':case 'unlock':{
-      demo?applyDemoService('lock',act,eid):WS.service('lock',act,eid).catch(()=>toast('操作失败','err'));
-      break;}
-    case 'hfilter':
-      domFilter=el.dataset.d||'all';areaFilter='all';query='';$('#searchInput').value='';
-      setTab('devices');break;
-    case 'room':
-      areaFilter=el.dataset.area||'__none__';domFilter='all';query='';
-      $('#searchInput').value='';setTab('devices');break;
-    case 'afilter':areaFilter=el.dataset.id;renderView();break;
-    case 'goff':{
-      const rn=el.dataset.room;
-      const targets=[...ents.values()].filter(e=>roomName(e.entity_id)===rn&&(DOMAINS[e.domain]||{}).tg&&e.domain!=='automation'&&isOn(e));
-      targets.forEach(x=>{demo?applyDemoService(x.domain,'turn_off',x.entity_id):WS.service(x.domain,'turn_off',x.entity_id).catch(()=>{});});
-      toast('已关闭 '+targets.length+' 个设备');
-      break;}
-    case 'dfilter':domFilter=el.dataset.id;renderView();break;
-    case 'goto-devices':areaFilter='all';domFilter='all';setTab('devices');break;
-    case 'goto-settings':setTab('settings');setTimeout(()=>{const i=$('#haToken');if(i)i.focus();},80);break;
-    case 'connect':doConnect();break;
-    case 'disconnect':WS.disconnect();enableDemo();toast('已断开连接');break;
-    case 'demo':enableDemo();toast('已载入演示数据');break;
-  }
-});
-document.addEventListener('input',ev=>{
-  const t=ev.target;
-  if(t.id==='searchInput')searchDeb(t.value);
-  else if(t.classList.contains('rng'))onSliderInput(t);
-});
-document.addEventListener('change',ev=>{
-  if(ev.target.classList&&ev.target.classList.contains('rng'))onSliderChange(ev.target);
-});
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet();});
-
-/* ================= 启动 ================= */
-$('#paletteBtn').innerHTML=icon('palette',20);
-$('#sheetClose').innerHTML=icon('x',18);
-applyTheme(curTheme());
-applyDensity(settings.density);
-renderAll();
-if(settings.url&&settings.token){
-  WS.connect().catch(err=>{toast('连接失败：'+err.message+'，已切换到演示模式','err');enableDemo();});
-}else enableDemo();
-
-
+const state={room:"客厅",ha:null,entities:{},current:null};
+function renderRooms(){document.getElementById("rooms").innerHTML=Object.keys(rooms).map(r=>`<button class="room ${r===state.room?"active":""}" onclick="selectRoom('${r}')"><span>${r}</span></button>`).join("")}
+function selectRoom(r){state.room=r;renderRooms();renderDevices()}
+function icon(t){return ({light:"☼",switch:"◉",fan:"◌",climate:"°",cover:"║"})[t]||"·"}
+function renderDevices(){const list=rooms[state.room];document.getElementById("roomTitle").textContent=state.room;document.getElementById("devices").innerHTML=list.map((d,i)=>{let s=state.entities[d.entity];let on=s?s.state==="on":(d.type==="climate"?false:false);let val=s?.attributes?.brightness?Math.round(s.attributes.brightness/255*100)+"%":d.value||(on?"ON":"OFF");return `<article class="device ${on?"on":""}" data-i="${i}" onpointerdown="pressStart(event,${i})" onpointerup="pressEnd(event,${i})" onpointerleave="pressCancel()"><div class="tag">${d.type} · ${d.entity.split(".")[0]}</div><div class="ring">${icon(d.type)}</div><h3>${d.name}</h3><div class="value">${val}</div></article>`}).join("")}
+let pressTimer=null;function pressStart(e,i){pressTimer=setTimeout(()=>{pressTimer=null;openDevice(rooms[state.room][i])},520)}
+function pressEnd(e,i){if(pressTimer){clearTimeout(pressTimer);pressTimer=null;toggleDevice(rooms[state.room][i])}}
+function pressCancel(){if(pressTimer){clearTimeout(pressTimer);pressTimer=null}}
+function toggleDevice(d){if(d.type==="climate"){toast("空调：第一版先展示状态，下一版加入环形温控");return}if(d.type==="cover"){toast("窗帘：第一版预留拖拽控制");return}if(state.ha) callService(d, d.type==="light"||d.type==="switch"?"toggle":"toggle"); else toast(`${d.name} · Demo ${d.name==="主照明"?"ON":"已切换"}`)}
+function openDevice(d){state.current=d;document.getElementById("sheetTitle").textContent=d.name;document.getElementById("sheetEyebrow").textContent=d.entity;let c=d.children||[];document.getElementById("children").innerHTML=c.length?c.map(x=>`<div class="child" onclick="childAction('${x.entity}', '${x.name}', '${x.type}')"><strong>${x.name}</strong><small>${x.type==="light"?"长按/拖动亮度":x.entity}</small></div>`).join(""):`<div class="child" style="grid-column:1/-1"><strong>${d.name}</strong><small>没有下一级设备</small></div>`;document.getElementById("sliderWrap").style.display=d.type==="light"||c.some(x=>x.type==="light")?"block":"none";document.getElementById("sheet").classList.add("show")}
+function childAction(entity,name,type){if(type==="light"){document.getElementById("sliderWrap").style.display="block";toast(`${name} · 已选中亮度控制`)}else toast(`${name} · 已切换`)}
+function setSlider(v){document.getElementById("sliderVal").textContent=v+"%";if(state.ha&&state.current) callService(state.current,"turn_on",{brightness_pct:+v})}
+function closeSheet(){document.getElementById("sheet").classList.remove("show")}
+function toast(t){const x=document.getElementById("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
+function openThemes(){document.getElementById("themes").classList.add("show");document.getElementById("themeGrid").innerHTML=themes.map((t,i)=>`<button class="theme" onclick="applyTheme(${i})"><strong>${String(i+1).padStart(2,"0")} · ${t[0]}</strong><div class="swatches"><i style="background:${t[1]}"></i><i style="background:${t[2]}"></i><i style="background:${t[3]}"></i></div></button>`).join("")}
+function closeThemes(){document.getElementById("themes").classList.remove("show")}
+function applyTheme(i){const t=themes[i];document.documentElement.style.setProperty("--bg",t[1]);document.documentElement.style.setProperty("--text",t[2]);document.documentElement.style.setProperty("--accent",t[3]);document.documentElement.style.setProperty("--glow",t[3]+"35");localStorage.setItem("atmosTheme",i);toast(`皮肤 · ${t[0]}`)}
+function openConnect(){document.getElementById("connect").classList.add("show")}function closeConnect(){document.getElementById("connect").classList.remove("show")}
+async function connectHA(){const url=document.getElementById("haUrl").value.replace(/\/$/,"");const token=document.getElementById("haToken").value.trim();if(!token){toast("请输入 Long-Lived Access Token");return}try{const r=await fetch(url+"/api/states",{headers:{Authorization:"Bearer "+token}});if(!r.ok)throw new Error("HTTP "+r.status);const arr=await r.json();state.ha={url,token,ws:null};arr.forEach(x=>state.entities[x.entity_id]=x);localStorage.setItem("atmosHA",JSON.stringify({url,token}));connectWS();document.getElementById("statusText").textContent="HA Connected";closeConnect();renderDevices();toast("Home Assistant 已连接")}catch(e){toast("连接失败：检查地址、Token 与浏览器跨域设置")}}
+function connectWS(){if(!state.ha)return;const u=new URL(state.ha.url);u.protocol=u.protocol==="https:"?"wss:":"ws:";const ws=new WebSocket(u.toString().replace(/\/$/,"")+"/api/websocket");state.ha.ws=ws;ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="auth_required")ws.send(JSON.stringify({type:"auth",access_token:state.ha.token}));if(m.type==="auth_ok"){document.getElementById("statusText").textContent="HA Live";ws.send(JSON.stringify({id:1,type:"subscribe_events",event_type:"state_changed"}))}if(m.type==="event"&&m.event?.event_type==="state_changed"){const x=m.event.data.new_state;state.entities[x.entity_id]=x;renderDevices()}};ws.onclose=()=>{document.getElementById("statusText").textContent="HA Offline";setTimeout(()=>state.ha&&connectWS(),3000)}}
+function callService(d,service,data={}){const ws=state.ha?.ws;if(!ws||ws.readyState!==1){toast("HA 尚未连接");return}ws.send(JSON.stringify({id:Date.now(),type:"call_service",domain:d.type,service,data:{entity_id:d.entity,...data}}))}
+(function init(){renderRooms();renderDevices();const ti=localStorage.getItem("atmosTheme");if(ti!==null)applyTheme(+ti);const saved=localStorage.getItem("atmosHA");if(saved){try{const x=JSON.parse(saved);document.getElementById("haUrl").value=x.url;document.getElementById("haToken").value=x.token}catch{}}document.getElementById("date").textContent=new Date().toLocaleDateString("zh-CN",{weekday:"short",day:"2-digit",month:"short"}).toUpperCase()})();
 </script>
 </body>
 </html>
